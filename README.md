@@ -18,19 +18,19 @@ C.H.Ting: "Forth Virtual Computer" contains 38 words.
 C.H.Moore: "Introductory vocabulary" contains 45 words, it has the same 
 power as BASIC.
 
-   + - * / MOD MIN MAX
-   < > =
-   AND OR XOR
-   NEGATE ABS NOT
-   */
-   DUP DROP SWAP OVER
-   DECIMAL HEX OCTAL
-   . .R EMIT CR KEY
-   : ... ;
-   VARIABLE CREATE ALLOT , @ !
-   ( ... )
-   EMPTY
-   IF ELSE THEN  FOR I NEXT
+    + - * / MOD MIN MAX
+    < > =
+    AND OR XOR
+    NEGATE ABS NOT
+    */
+    DUP DROP SWAP OVER
+    DECIMAL HEX OCTAL
+    . .R EMIT CR KEY
+    : ... ;
+    VARIABLE CREATE ALLOT , @ !
+    ( ... )
+    EMPTY
+    IF ELSE THEN  FOR I NEXT
 
 There are other words necessary to implement the interpreter, compiler
 block storage and console interaction. But for most apps the above
