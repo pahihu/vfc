@@ -32,7 +32,7 @@ power as BASIC.
     EMPTY
     IF ELSE THEN  FOR I NEXT
 
-There are other words necessary to implement the interpreter, compiler
+There are other words necessary to implement the interpreter, compiler,
 block storage and console interaction. But for most apps the above
 is enough.
 
