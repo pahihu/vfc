@@ -12,6 +12,7 @@
  *
  * History
  * =======
+ * 220930AP coroutines CO
  * 220309AP buffered output
  * 211122AP simplified header struct (NFA is 0 terminated string)
  *          native addresses, reworked ABORT mechanism
@@ -427,6 +428,7 @@ void fo_fetchexecute(void)
    if (xt)
       c_execute(xt);
 }
+void fo_co(void) { Cell tmp = I; I = CELL(P); P = PCELL(tmp); }
 
 int c_isdelim(int delim, int ch)
 {
@@ -1153,32 +1155,35 @@ void c_dict(void)
       {"CELL/",   fo_cellslash},
       {"CELL+",   fo_cellplus},
       {"CELL-",   fo_cellsub},
+
       {"1+",      fo_1plus},
       {"1-",      fo_1sub},
       {"2*",      fo_2star},
       {"2/",      fo_2slash},
 
-      {"TYPE",    fo_type},
+      {"TYPE",    fo_type},         /* strings */
       {"COUNT",   fo_count},
-      {"-TRAILING", fo_subtrailing},
       {"PLACE",   fo_place},
       {"APPEND",  fo_append},
+      {"-TRAILING", fo_subtrailing},
 
       {"NIP",     fo_nip},
       {"ROT",     fo_rot},
       {"]",       fo_rbracket},
 
-      {"(DLOPEN)",fo_dlopen},
+      {"(DLOPEN)",fo_dlopen},       /* foreign functions */
       {"(DLSYM)", fo_dlsym},
       {"(CALLC)", fo_callc},
       {"SP@",     fo_spat},
+      {"ZCOUNT",  fo_zcount},
 
-      {"BLOCK",   fo_block},
+      {"BLOCK",   fo_block},        /* memory mapped I/O */
       {"SAVE",    fo_save},
 
-      {"ZCOUNT",  fo_zcount},
       {"@+",      fo_fetchplus},
       {"!+",      fo_storeplus},
+
+      {"CO",      fo_co},           /* coroutines */
 /* --- END --- */
 		{NULL,		0},
 	};
