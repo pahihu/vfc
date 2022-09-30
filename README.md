@@ -32,12 +32,12 @@ power as BASIC.
     EMPTY
     IF ELSE THEN  FOR I NEXT
 
-There are other words necessary to implement the interpreter, compiler
+There are other words necessary to implement the interpreter, compiler,
 block storage and console interaction. But for most apps the above
 is enough.
 
 
-G.Haydon: "Level0 Forth", contains 37 words (C.H.Moore)
+G.Haydon: "Level 0 Forth", contains 37 words (C.H.Moore)
 
     + - * */ /MOD ABS NEGATE MIN MAX
     AND OR XOR NOT
