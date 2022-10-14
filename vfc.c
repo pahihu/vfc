@@ -12,6 +12,7 @@
  *
  * History
  * =======
+ * 221014AP >A A> A@ A! A@+ A!+
  * 220930AP coroutines CO
  * 220309AP buffered output
  * 211122AP simplified header struct (NFA is 0 terminated string)
@@ -76,6 +77,7 @@ typedef unsigned char Byte;
 Cell *M = 0;         /* memory */
 Cell *P,*W;			   /* indirect-threaded code IP, W */
 Cell *S,T,I,*R;		/* data stack ptr, top, rtop, return stack ptr */
+Cell A;              /* address register */
 
 typedef struct Dict {
    const Byte *nfa;
@@ -272,17 +274,18 @@ void fo_plusstore(void)  { *PCELL(T) += *S++; fo_drop(); }
 void fo_fetchplus(void) /* : @+ ( a1 - a2 x) */
 {
    Cell *p = PCELL(T);
-
-   T = CELL(p + 1);
-   fo_dup(); T = CELL(*p);
+   T += sizeof(Cell); fo_dup(); T = CELL(*p);
 }
 void fo_storeplus(void) /* : !+ ( a1 x - a2) */
 {
-   Cell *p = PCELL(*S);
-
-   *p++ = T; fo_drop(); 
-   T = CELL(p);
+   *PCELL(*S) = T; fo_drop(); T += sizeof(Cell);
 }
+void fo_toa(void)    { A = T; fo_drop(); }
+void fo_afrom(void)  { fo_dup(); T = A; }
+void fo_afetch(void) { fo_dup(); T = *PCELL(A); }
+void fo_astore(void) { *PCELL(A) = T; fo_drop(); }
+void fo_afetchplus(void)  { fo_afetch(); A += sizeof(Cell); }
+void fo_astoreplus(void)  { fo_astore(); A += sizeof(Cell); }
 
 /* logic */
 void fo_and(void)	 { T &= *S++; }
@@ -1083,6 +1086,13 @@ void c_dict(void)
 		{"C!",      fo_cstore},
 		{"@",       fo_fetch},
 		{"!",       fo_store},
+
+      {"A>",      fo_afrom},     /* address register */
+      {">A",      fo_toa},
+      {"A@",      fo_afetch},
+      {"A!",      fo_astore},
+      {"A@+",     fo_afetchplus},
+      {"A!+",     fo_astoreplus},
 
 		{"AND",     fo_and},       /* logic */
 		{"OR",      fo_or},
