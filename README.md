@@ -46,3 +46,21 @@ G.Haydon: "Level 0 Forth", contains 37 words (C.H.Moore)
     CR EMIT KEY
     : ; CREATE , ALLOT
     IF ELSE THEN FOR NEXT I
+
+Foreign function interface example
+
+    ===> cat test.c
+    #include <stdio.h>
+    void test_c(int n) { printf("n = %d\n", n); }
+
+    ===> cc -shared -o libtest.dylib test.c
+
+    ===> vfc run.f
+    library libtest.dylib
+
+    0 0 0 0 > 1 function: test_c
+
+    0 0 0 0 > 42 test_c drop
+    n = 42
+
+    0 0 0 0 > bye

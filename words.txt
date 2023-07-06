@@ -1,8 +1,9 @@
-55] ( forth dictionary)
+61] ( forth dictionary)
    <lit> 0branch branch <next> <."> <c">
    exit ' execute @execute i
    >r r> r@ drop dup swap over
    c@ c! @ !
+   a> >a a@ a! a@+ a!+
    and or xor invert 0=
    + - * / mod
    key emit
@@ -13,7 +14,7 @@
    < = >
    empty
 
-45] ( extensions)
+46] ( extensions)
    mark macro forth bye
    ( here +! space spaces .(
    ?ms word :noname include move fill abort cold
@@ -24,6 +25,7 @@
    (dlopen) (dlsym) (callc) sp@
    block save
    zcount @+ !+
+   co
 
 18] ( macro dictionary)
    if else then
