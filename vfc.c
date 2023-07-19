@@ -202,6 +202,16 @@ int  c_key(void)
       crossLine = 1;
    return ch;
 }
+
+void c_slurpline(void)
+{
+   int ch;
+
+   ch = c_key();
+   while (EOF != ch && !crossLine)
+      ch = c_key();
+}
+
 void c_type(char *s, int n)
 {
     int i;
@@ -977,6 +987,7 @@ void c_mainloop()
 
    savERR = errENV; errENV = &errHandler;
 	if ((err = setjmp(errHandler))) {
+      c_slurpline();
       DBG(1,fprintf(stderr,"--- c_mainloop ---\n"));
       errENV = savERR;
       c_abort(err);
@@ -1312,7 +1323,7 @@ int main(int argc, char *argv[])
 	if (PRIME_SIZE > CELL_SIZE) {
 		c_error("address size is greater than cell size");
 	}
-   memSize = 256*1024*CELL_SIZE;
+   memSize = 256*1024;
    blkFile = "fo.blk";
    for (i = 1; i < argc; i++) {
       str = argv[i];
