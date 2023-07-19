@@ -43,13 +43,8 @@
 #include <dlfcn.h>
 #include <fcntl.h>
 #include <sys/mman.h>
-#include <string.h>
 #include <errno.h>
-#include <ctype.h>
-
-#ifdef darwin
-#define stricmp   strcasecmp
-#endif
+#include <string.h>
 
 typedef void (*prime_t)(void);
 typedef long Cell;
@@ -128,11 +123,11 @@ void fo_abort(void);
 void fo_cold(void);
 void fo_save(void);
 
-Cell to_cell(Cell baddr) { return baddr / CELL_SIZE; }
-Cell to_byte(Cell waddr) { return waddr * CELL_SIZE; }
-
+#ifdef NDEBUG
+#define DBG(lvl,stmt)
+#else
 #define DBG(lvl,stmt) if(dbg>lvl){stmt;}
-// #define DBG(lvl,stmt)
+#endif
 
 Cell crossLine;
 #define CNT_SIZE  8
@@ -143,6 +138,83 @@ Cell crossLine;
 #else
 #define STR_CNT(x)   (*PCELL(x))
 #endif
+
+int ToLower(int ch)
+{
+   return ('A' <= ch) && (ch <= 'Z') ? ch + 'a' - 'A' : ch;
+}
+
+unsigned long StrLen(const char *s)
+{
+   unsigned long cnt = 0;
+
+   if (s)
+      while (*s++)
+         cnt++;
+   return cnt;
+}
+
+char *StrCpy(char *dst, const char *src)
+{
+   char *p = dst;
+
+   if (src)
+      while ((*p++ = *src++))
+         ;
+   return dst;
+}
+
+int StrCaseCmp(const char *s1, const char *s2)
+{
+   char c1, c2;
+
+   c1 = ToLower(*s1); c2 = ToLower(*s2);
+   while (c1 && c2 && (c1 == c2)) {
+      s1++; s2++;
+      c1 = ToLower(*s1); c2 = ToLower(*s2);
+   }
+   if (c1 || c2)
+      return c1 - c2;
+   return 0;
+}
+
+unsigned char *MemSet(unsigned char *b, int c, unsigned long len)
+{
+   unsigned char *p = b;
+
+   while (len--)
+      *p++ = c;
+   return b;
+}
+
+unsigned char *MemMove(unsigned char *dst, unsigned char *src, unsigned long len)
+{
+   unsigned char *p = dst;
+
+   if (src + len < p)
+      while (len--)
+         *p++ = *src++;
+   else {
+      src += len; p += len;
+      while (len--)
+         *--p = *--src;
+   }
+
+   return dst;
+}
+
+int FPutS(const char *s, FILE *stream)
+{
+   int i, rc;
+
+   for (i = 0; s[i]; i++) {
+      rc = fputc(s[i], stream);
+      if (EOF == rc)
+         return rc;
+   }
+   return 0;
+}
+
 
 void xexit(int code)
 {
@@ -156,7 +228,7 @@ int STRcmp(const Byte *s, const Byte *q)
    int ret;
 
 	DBG(10,fprintf(stderr,"%s : %s", s, q));
-	ret = stricmp(CHAR(s), CHAR(q));
+	ret = StrCaseCmp(CHAR(s), CHAR(q));
    DBG(10,fprintf(stderr," => %d\n",ret));
    return ret;
 }
@@ -165,7 +237,7 @@ int STRcmp(const Byte *s, const Byte *q)
 int STRlen(Cell *nfa)
 {
    /* [count]str[\0] */
-	return CNT_SIZE + strlen(CHAR(STR_ADDR(nfa))) + 1;
+	return CNT_SIZE + StrLen(CHAR(STR_ADDR(nfa))) + 1;
 }
 
 int c_iscrlf(int ch)
@@ -181,7 +253,7 @@ void c_flush(int force)
 {
    if (force || (NIOBUF == niobuf)) {
       iobuf[niobuf] = '\0';
-      fprintf(devOUT,"%s",&iobuf[0]);
+      FPutS(&iobuf[0], devOUT);
       niobuf = 0;
    }
 }
@@ -190,7 +262,6 @@ void c_emit(int ch)
 {
    c_flush(0);
    iobuf[niobuf++] = ch;
-   // fputc(ch, devOUT);
 }
 
 int  c_key(void)
@@ -217,7 +288,7 @@ void c_type(char *s, int n)
     int i;
     
     if (-1 == n)
-        n = strlen(s);
+        n = StrLen(s);
     for (i = 0; i < n; i++)
         c_emit(*s++);
 }
@@ -239,8 +310,7 @@ void c_abort(int err)
 }
 void c_doabort(char *msg, int code)
 {
-   fprintf(stderr,"%s? ",msg); fflush(stderr);
-	// c_type(msg, -1); c_type("? ", 2); fflush(devOUT);
+   FPutS(msg, stderr); FPutS("? ", stderr); fflush(stderr);
    c_abort(code);
 }
 
@@ -333,7 +403,7 @@ void fo_type(void)
    if (n > 0)
       c_type(w, n);
 }
-void fo_zcount(void) { const char *p = CHAR(T); fo_dup(); T = strlen(p); }
+void fo_zcount(void) { const char *p = CHAR(T); fo_dup(); T = StrLen(p); }
 void fo_count(void)
 {
    Byte *p = BYTE(T);
@@ -350,7 +420,7 @@ void fo_place(void)
    n    = T;       fo_drop();
    from = BYTE(T); fo_drop();
    STR_CNT(to) = n;
-   memcpy(STR_ADDR(to), from, n);
+   MemMove(STR_ADDR(to), from, n);
 }
 void fo_append(void)
 {
@@ -362,7 +432,7 @@ void fo_append(void)
    from = BYTE(T); fo_drop();
    oldn = STR_CNT(to); STR_CNT(to) += n;
    to = STR_ADDR(to);
-   memcpy(to + oldn, from, n);
+   MemMove(to + oldn, from, n);
 }
 void fo_subtrailing(void)
 {
@@ -465,7 +535,7 @@ void c_text(Byte *p, int delim)
 		ch = c_key();
 	}
 	*p++ = '\0';
-   STR_CNT(q) = strlen(CHAR(STR_ADDR(q)));
+   STR_CNT(q) = StrLen(CHAR(STR_ADDR(q)));
 }
 
 void c_word(int delim)  { c_text(cH, delim); }
@@ -482,7 +552,7 @@ void fo_move(void)
    from = BYTE(T); fo_drop();
 
    if (n > 0)
-      memmove(to, from, n);
+      MemMove(to, from, n);
 }
 void fo_fill(void)
 {
@@ -493,7 +563,7 @@ void fo_fill(void)
    n    =       T; fo_drop();
    from = BYTE(T); fo_drop();
 
-   memset(from, ch, n);
+   MemSet(from, ch, n);
 }
 
 /*
@@ -606,11 +676,6 @@ void fo_aft(void)
    fo_dup(); *S = CELL(H);
 }
 
-int c_tolower(int ch)
-{
-   return ('A' <= ch) && (ch <= 'Z') ? ch + 'a' - 'A' : ch;
-}
-
 int c_digitq(int ch)
 {
 	int ret = '0' <= ch;
@@ -639,7 +704,7 @@ Cell c_tonumber(Byte *s)
 	} else if ('$' == *p) {
       BASE = 16; p++;
    }
-	while ((ch = c_tolower(*p++))) {
+	while ((ch = ToLower(*p++))) {
 		if (!c_digitq(ch)) { 
               if ('k' == ch) ret <<= 10;
          else if ('m' == ch) ret <<= 20;
@@ -681,7 +746,7 @@ void c_typer(char *p, int n, int m)
    int i;
     
 	if (-1 == n)
-	   n = strlen(p);
+	   n = StrLen(p);
 	for (i = 0; i < m - n; i++) {
     	c_emit(' ');
 	}
@@ -1018,7 +1083,7 @@ void c_include(char *path)
    volatile int err;
    char tmp[FILENAME_MAX];
 
-   strcpy(tmp,path);
+   StrCpy(tmp,path);
 
    err = 0;
    savIN = devIN;
@@ -1311,7 +1376,7 @@ void fo_cold(void)
 
 void usage()
 {
-   fprintf(stderr,"usage: vfc [-b file.blk][-m mem] include1 ...\n");
+   FPutS("usage: vfc [-b file.blk][-d lvl][-m mem] [include1...]\n", stderr);
    exit(1);
 }
 

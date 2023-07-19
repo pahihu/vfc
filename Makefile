@@ -1,5 +1,5 @@
 # CC = cc -m32
-CC = cc #-g
+CC = cc -flto -ffunction-sections -fdata-sections -Wl,-dead_strip  #-g
 OPT = -Os -fomit-frame-pointer
 CFLAGS = $(OPT) -Wall -Wextra -Ddarwin
 STRIP = strip
