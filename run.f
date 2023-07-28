@@ -58,7 +58,7 @@ create values  ' @  , ' !  , ' +! ,
 
 create $pad 256 allot
 : s( ( 'text' - ca u)
-   [char] ) word count  $pad place  $pad count ;
+   41 word count  $pad place  $pad count ;
 : s+ ( to ca u - to)   rot dup >R append R> ;
 
 : (abort) ( n ca)   swap IF  count type abort  THEN  drop ;
@@ -67,6 +67,9 @@ macro
 : s" ( 'text')   postpone c"  postpone count ;
 : abort" ( 'text')   postpone c" postpone (abort) ;
 forth
+
+( Structures ------------------------------------------------- )
+: +field ( o1 n 'name' - o2)   create over , + does> @ + ;
 
 
 ( Deferred words --------------------------------------------- )
