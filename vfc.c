@@ -61,8 +61,8 @@ typedef unsigned char Byte;
 #define CELL(x)      ((Cell)(x))
 #define PCELL(x)     ((Cell*)(x))
 
-#define DSTACK_SIZE	(1024)
-#define RSTACK_SIZE	(2*1024)
+#define DSTACK_SIZE	(1500)
+#define RSTACK_SIZE	( 750)
 
 #define PRIME_SIZE	(sizeof(prime_t))
 #define CELL_SIZE	   (sizeof(Cell))
