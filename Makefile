@@ -1,12 +1,12 @@
 CC = cc
 OPT = -Os -fomit-frame-pointer
 CFLAGS = $(OPT) -Wall -Wextra
-STRIP = strip
+SHFLAGS = -fPIC
 LIBS = -lm
+STRIP = strip
 
 ifeq ($(shell uname -s), Linux)
   LIBS += -ldl
-  SHFLAGS += -fPIC
 endif
 
 all: vfc libtest.so
