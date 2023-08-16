@@ -1,18 +1,25 @@
-# CC = cc -m32
-CC = cc -flto -ffunction-sections -fdata-sections -Wl,-dead_strip  #-g
+CC = cc
 OPT = -Os -fomit-frame-pointer
-CFLAGS = $(OPT) -Wall -Wextra -Ddarwin
+CFLAGS = $(OPT) -Wall -Wextra
 STRIP = strip
-# STRIP = :
+LIBS = -lm
 
-all: vfc
+ifeq ($(shell uname -s), Linux)
+  LIBS += -ldl
+  SHFLAGS += -fPIC
+endif
+
+all: vfc libtest.so
 
 vfc: vfc.c
-	$(CC) $(CFLAGS) -o $@ $< -lm
+	$(CC) $(CFLAGS) -o $@ $< $(LIBS)
 	$(STRIP) -S -x $@
 	size $@
 	ls -l $@
 
+libtest.so: test.c
+	$(CC) -shared $(SHFLAGS) -o $@ $<
+
 clean:
-	$(RM) vfc vfc.o
+	$(RM) vfc vfc.o libtest.so
 	$(RM) -r *.dSYM
