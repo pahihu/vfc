@@ -74,6 +74,8 @@ Cell *P,*W;			   /* indirect-threaded code IP, W */
 Cell *S,T,I,*R;		/* data stack ptr, top, rtop, return stack ptr */
 Cell A;              /* address register */
 
+#define N   *S
+
 typedef struct Dict {
    const Byte *nfa;
    struct Dict *lfa;
@@ -340,10 +342,10 @@ void fo_dup(void)    { *--S = T; }
 void fo_tor(void)	   { *--R = I; I = T; fo_drop(); }
 void fo_rfrom(void)	{ fo_dup(); T = I; I = *R++; }
 void fo_rfetch(void) { fo_dup(); T = I; }
-void fo_swap(void)	{ Cell tmp = T; T = *S; *S = tmp; }
-void fo_over(void)	{ Cell tmp = *S; fo_dup(); T = tmp; }
+void fo_swap(void)	{ Cell tmp = T; T = N; N = tmp; }
+void fo_over(void)	{ Cell tmp = N; fo_dup(); T = tmp; }
 void fo_nip(void)    { S++; }
-void fo_rot(void)    { Cell tmp = T; T = S[1]; S[1] = *S; *S = tmp; }
+void fo_rot(void)    { Cell tmp = T; T = S[1]; S[1] = N; N = tmp; }
 
 /* memory */
 void fo_cfetch(void) { T = *BYTE(T); }
@@ -358,7 +360,7 @@ void fo_fetchplus(void) /* : @+ ( a1 - a2 x) */
 }
 void fo_storeplus(void) /* : !+ ( a1 x - a2) */
 {
-   *PCELL(*S) = T; fo_drop(); T += sizeof(Cell);
+   *PCELL(N) = T; fo_drop(); T += sizeof(Cell);
 }
 void fo_toa(void)    { A = T; fo_drop(); }
 void fo_afrom(void)  { fo_dup(); T = A; }
@@ -378,8 +380,15 @@ void fo_zequal(void) { T = !T? -1 : 0; }
 void fo_add(void)	 { T += *S++; }
 void fo_sub(void)	 { T = *S++ - T; }
 void fo_mul(void)	 { T *= *S++; }
-void fo_div(void)  { Cell tmp = *S++; T = tmp / chk_div0(T); }
-void fo_mod(void)  { Cell tmp = *S++; T = tmp % chk_div0(T); }
+void fo_divmod(void) /* /MOD ( a b - r q) */
+{
+    Cell tmp = chk_div0(T);
+
+    T = N / tmp;
+    N = N % tmp;
+}
+void fo_div(void)  { fo_divmod(); fo_nip(); }
+void fo_mod(void)  { fo_divmod(); fo_drop(); }
 
 /* i/o */
 void fo_key(void)	 { c_flush(1); fo_dup(); T = c_key(); }
@@ -437,7 +446,7 @@ void fo_append(void)
 void fo_subtrailing(void)
 {
    Cell n = T;
-   char *w = CHAR(*S);
+   char *w = CHAR(N);
 
    while (n && c_isdelim(BL, w[n]))
       n--;
@@ -673,7 +682,7 @@ void fo_aft(void)
 	c_comma(xt_branch);
 	T = CELL(H);
 	c_comma(0);
-   fo_dup(); *S = CELL(H);
+   fo_dup(); N = CELL(H);
 }
 
 int c_digitq(int ch)
@@ -763,7 +772,7 @@ void c_dotr(Cell n, int w, int base)
 void fo_dot(void)  { Cell n = T; fo_drop(); c_dotr(n, 0, BASE); }
 void fo_dotr(void)
 {
-   Cell w = T, n = *S;
+   Cell w = T, n = N;
 
    T = S[1]; S += 2;
    c_dotr(n, w, BASE);
@@ -828,13 +837,6 @@ void fo_empty(void)
     dMACRO = mark[2];
 }
 void fo_bye(void)   { xexit(T); }
-void fo_divmod(void)
-{
-    Cell tmp = T;
-    
-     T = *S / chk_div0(T);
-    *S = *S % tmp;
-}
 void fo_muldiv(void)
 {
    DCell d = S[1];
