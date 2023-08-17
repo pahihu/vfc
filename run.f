@@ -32,7 +32,7 @@ forth
 
 ( Debug ------------------------------------------------------ )
 : .h  hex . decimal ;
-: .line ( a - a')   8 for dup c@ 255 and space 2 .r 1+ next ;
+: .line ( a - a')   7 for dup c@ 255 and space 2 .r 1+ next ;
 : dump ( a n)
    15 + 16 / for
       cr  dup 8 .r  .line 3 spaces .line
