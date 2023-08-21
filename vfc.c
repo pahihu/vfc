@@ -1139,31 +1139,73 @@ void c_dict(void)
 	int i;
    DICT *d;
 	dict_entry_t words[] = {
-		{"<LIT>",	fo_dolit},
+		{"<LIT>",	fo_dolit},     /* runtime */
 		{"0BRANCH", fo_0branch},
 		{"BRANCH",  fo_branch},
 		{"<NEXT>",  fo_donext},
       {"<.\">",   fo_dodotstr},
       {"<C\">",   fo_docstr},
+		{">R",      fo_tor},
+		{"EXIT",    fo_exit},
 
-		{"EXIT",    fo_exit},      /* control */
-		{"'",	      fo_tick},
-		{"EXECUTE", fo_execute},
-		{"@EXECUTE",fo_fetchexecute},
-		{"I",       fo_rfetch},
+		{"@",       fo_fetch},     /* memory */
+		{"!",       fo_store},
 
-		{">R",      fo_tor},       /* stack */
-		{"R>",      fo_rfrom},
-		{"R@",	   fo_rfetch},
-		{"DROP",    fo_drop},
+		{"+",		   fo_add},       /* arithmetic */
+		{"-",		   fo_sub},
+		{"*",		   fo_mul},
+		{"/",		   fo_div},
+		{"MOD",		fo_mod},
+      {"*/",      fo_muldiv},
+		{"ABS",     fo_abs},
+		{"NEGATE",  fo_negate},
+		{"MIN",     fo_min},
+		{"MAX",     fo_max},
+
+		{"<",       fo_less},      /* logic */
+		{"=",       fo_equal},
+		{">",       fo_greater},
+		{"AND",     fo_and},
+		{"OR",      fo_or},
+		{"XOR",     fo_xor},
+      {"INVERT",  fo_invert},
+      {"NOT",     fo_zequal},
+
+		{"DROP",    fo_drop},      /* stack */
 		{"DUP",     fo_dup},
 		{"SWAP",    fo_swap},
 		{"OVER",    fo_over},
 
+      {".",       fo_dot},       /* io */
+      {".R",      fo_dotr},
+		{"EMIT",	   fo_emit},
+		{"KEY",		fo_key},
+		{"CR",      fo_cr},
+      {"HEX",     fo_hex},
+      {"DECIMAL", fo_decimal},
+
+		{":",		   fo_colon},     /* defining */
+		{"VARIABLE",fo_variable},
+		{"CREATE",  fo_create},
+		{"ALLOT",   fo_allot},
+		{",",       fo_comma},
+
+		{"I",       fo_rfetch},    /* control */
+		{"EMPTY",   fo_empty},
+
+      {"(",       fo_paren},
+
+		{"BYE",     fo_bye},
+
+#ifndef MOORE_INTRO
+		{"'",	      fo_tick},
+		{"EXECUTE", fo_execute},
+		{"@EXECUTE",fo_fetchexecute},
+
+		{"R>",      fo_rfrom},     /* stack */
+		{"R@",	   fo_rfetch},
 		{"C@",      fo_cfetch},    /* memory */
 		{"C!",      fo_cstore},
-		{"@",       fo_fetch},
-		{"!",       fo_store},
 
       {"A>",      fo_afrom},     /* address register */
       {">A",      fo_toa},
@@ -1171,56 +1213,16 @@ void c_dict(void)
       {"A!",      fo_astore},
       {"A@+",     fo_afetchplus},
       {"A!+",     fo_astoreplus},
-
-		{"AND",     fo_and},       /* logic */
-		{"OR",      fo_or},
-		{"XOR",     fo_xor},
-      {"INVERT",  fo_invert},
       {"0=",      fo_zequal},
 
-		{"+",		fo_add},          /* arithmetic */
-		{"-",		fo_sub},
-		{"*",		fo_mul},
-		{"/",		fo_div},
-		{"MOD",		fo_mod},
-
-		{"KEY",		fo_key},       /* io */
-		{"EMIT",	fo_emit},
-
-		{":",		fo_colon},        /* defining */
 		{"CONSTANT",fo_constant},
-		{"VARIABLE",fo_variable},
-
-		{"CR",      fo_cr},        /* Moore io */
-      {".R",      fo_dotr},
-      {".",       fo_dot},
-      {"HEX",     fo_hex},
-      {"DECIMAL", fo_decimal},
-
-		{",",       fo_comma},     /* Moore defining */
-		{"ALLOT",   fo_allot},
-		{"CREATE",  fo_create},
-
 		{"/MOD",    fo_divmod},    /* Moore arithmetic */
-		{"ABS",     fo_abs},
-		{"NEGATE",  fo_negate},
-		{"MIN",     fo_min},
-		{"MAX",     fo_max},
-      {"*/",      fo_muldiv},
-
-		{"<",       fo_less},      /* Moore logic */
-		{"=",       fo_equal},
-		{">",       fo_greater},
-
-		{"EMPTY",   fo_empty},     /* Moore control */
 
 /* --- START --- */
 		{"MARK",    fo_mark},
 		{"MACRO",   fo_macro},
 		{"FORTH",   fo_forth},
-		{"BYE",     fo_bye},
 
-      {"(",       fo_paren},     /* eForth */
       {"HERE",    fo_here},
       {"+!",      fo_plusstore},
       {"SPACE",   fo_space},
@@ -1273,21 +1275,23 @@ void c_dict(void)
 
       {"CO",      fo_co},           /* coroutines */
 /* --- END --- */
+#endif
 		{NULL,		0},
 	};
 	dict_entry_t macros[] = {
 		{"IF",		fo_if},           /* control */
 		{"ELSE",	   fo_else},
 		{"THEN",	   fo_then},
+		{"FOR",     fo_for},
+		{"NEXT",    fo_next},
+      {"(",       fo_paren},
+		{";",		   fo_semi},         /* defining */
+
+#ifndef MOORE_INTRO
 		{"BEGIN",	fo_begin},
 		{"WHILE",	fo_while},
 		{"REPEAT",	fo_repeat},
 		{"AGAIN",	fo_again},
-		{"FOR",     fo_for},
-		{"NEXT",    fo_next},
-      {"(",       fo_paren},
-
-		{";",		   fo_semi},         /* defining */
 
       {".\"",     fo_dotstr},       /* eForth */
       {"AFT",     fo_aft},
@@ -1297,7 +1301,7 @@ void c_dict(void)
       {"LITERAL", fo_literal},
       {"[",       fo_lbracket},
       {"POSTPONE",fo_postpone},
-
+#endif
 		{NULL,		0},
 	};
 
@@ -1424,4 +1428,4 @@ int main(int argc, char *argv[])
 }
 
 
-// vim:sw=3:ts=3:et
+/* vim:set sw=3 ts=3 et: */

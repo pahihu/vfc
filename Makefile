@@ -1,6 +1,6 @@
 CC = cc
 OPT = -Os -fomit-frame-pointer
-CFLAGS = $(OPT) -Wall -Wextra
+CFLAGS = $(OPT) $(XCFLAGS) -Wall -Wextra
 SHFLAGS = -fPIC
 LIBS = -lm
 STRIP = strip
