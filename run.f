@@ -1,7 +1,4 @@
 32 constant bl
-cell 8 * constant bits
-
-: words ( #b - #w)   [ cell 1- ] literal +  cell/ ;
 
 ( Double words ----------------------------------------------- )
 : 2! ( lo hi a)   swap over ! cell+ ! ;
@@ -20,19 +17,15 @@ cell 8 * constant bits
 : char ( 'name' - c)   bl word count  drop c@ ;
 
 : >body ( xt - a)   [ 2 cells ] literal + ;
-: compile, ( xt)   , ;
-
-' <lit> constant doLIT
-: lit, ( n)   doLIT , , ;
 
 macro
-: [char]   char lit, ;
+: [char]   char postpone literal ;
 forth
 
 
 ( Debug ------------------------------------------------------ )
 : .h  hex . decimal ;
-: .line ( a - a')   7 for dup c@ 255 and space 2 .r 1+ next ;
+: .line ( a - a')   7 for dup c@ 255 and space 3 .r 1+ next ;
 : dump ( a n)
    15 + 16 / for
       cr  dup 8 .r  .line 3 spaces .line
@@ -53,7 +46,7 @@ create values  ' @  , ' !  , ' +! ,
 
 
 ( Strings ---------------------------------------------------- )
-: pad ( - ca)   here bits 2 * + ;
+: pad ( - ca)   here [ cell 16 * ] literal + ;
 : >pad ( ca1 u1 - ca2)   pad place  pad ;
 
 create $pad 256 allot
@@ -78,7 +71,7 @@ forth
 : defer ( 'name')   create ['] noop , does>  @execute ;
 : is ( xt 'name')   ' >body ! ;
 macro
-: [is] ( 'name')   ' >body lit, postpone ! ;
+: [is] ( 'name')   ' >body postpone literal postpone ! ;
 forth
 
 

@@ -266,9 +266,15 @@ void c_emit(int ch)
    iobuf[niobuf++] = ch;
 }
 
+int Ch = 0;
 int  c_key(void)
 {
    int ch;
+
+   if (Ch) {
+     ch = Ch; Ch = 0;
+     return ch;
+   }
 
    ch = fgetc(devIN);
    if (c_iscrlf(ch))
@@ -276,13 +282,22 @@ int  c_key(void)
    return ch;
 }
 
+void c_unget(int ch)
+{
+   Ch = ch;
+}
+
 void c_slurpline(void)
 {
    int ch;
+   int cnt = 0;
 
    ch = c_key();
-   while (EOF != ch && !crossLine)
-      ch = c_key();
+   while (EOF != ch && !crossLine) {
+      cnt++; ch = c_key();
+   }
+   if (!cnt)
+     c_unget(ch);
 }
 
 void c_type(char *s, int n)
@@ -1060,12 +1075,8 @@ void c_mainloop()
       c_abort(err);
    }
 
-   crossLine = 0;
+   crossLine = 1;
 	for (;;) {
-		c_word(BL);
-      if (0 == STR_CNT(cH))
-         break;
-		(*staFn)(cH);
       if (crossLine && isatty(fileno(devIN))) {
          fo_cr();
          c_dotr(S[2], 0, BASE);
@@ -1075,6 +1086,10 @@ void c_mainloop()
          c_type("> ", -1);
          crossLine = 0;
       }
+		c_word(BL);
+      if (0 == STR_CNT(cH))
+         break;
+		(*staFn)(cH);
 	}
 }
 
