@@ -12,6 +12,7 @@
  *
  * History
  * =======
+ * 230909AP removed NIP ROT CELL/ CELL- @+ !+ ['] @EXECUTE .(
  * 221014AP >A A> A@ A! A@+ A!+
  * 220930AP coroutines CO
  * 220309AP buffered output
@@ -359,8 +360,6 @@ void fo_rfrom(void)	{ fo_dup(); T = I; I = *R++; }
 void fo_rfetch(void) { fo_dup(); T = I; }
 void fo_swap(void)	{ Cell tmp = T; T = N; N = tmp; }
 void fo_over(void)	{ Cell tmp = N; fo_dup(); T = tmp; }
-void fo_nip(void)    { S++; }
-void fo_rot(void)    { Cell tmp = T; T = S[1]; S[1] = N; N = tmp; }
 
 /* memory */
 void fo_cfetch(void) { T = *BYTE(T); }
@@ -368,15 +367,7 @@ void fo_cstore(void) { *BYTE(T) = *S++; fo_drop(); }
 void fo_fetch(void)  { T = *PCELL(T); }
 void fo_store(void)  { *PCELL(T) = *S++; fo_drop(); }
 void fo_plusstore(void)  { *PCELL(T) += *S++; fo_drop(); }
-void fo_fetchplus(void) /* : @+ ( a1 - a2 x) */
-{
-   Cell *p = PCELL(T);
-   T += sizeof(Cell); fo_dup(); T = CELL(*p);
-}
-void fo_storeplus(void) /* : !+ ( a1 x - a2) */
-{
-   *PCELL(N) = T; fo_drop(); T += sizeof(Cell);
-}
+
 void fo_toa(void)    { A = T; fo_drop(); }
 void fo_afrom(void)  { fo_dup(); T = A; }
 void fo_afetch(void) { fo_dup(); T = *PCELL(A); }
@@ -402,7 +393,7 @@ void fo_divmod(void) /* /MOD ( a b - r q) */
     T = N / tmp;
     N = N % tmp;
 }
-void fo_div(void)  { fo_divmod(); fo_nip(); }
+void fo_div(void)  { fo_divmod(); S++; }
 void fo_mod(void)  { fo_divmod(); fo_drop(); }
 
 /* i/o */
@@ -474,10 +465,8 @@ void c_allot(int ncells)	{ H += ncells; }
 void fo_hex(void)     { BASE = 16; }
 void fo_decimal(void) { BASE = 10; }
 void fo_cell(void)    { fo_dup(); T = CELL_SIZE; }
-void fo_cellslash(void) { T /= CELL_SIZE; }
 void fo_cells(void)   { T *= CELL_SIZE; }
 void fo_cellplus(void){ T += CELL_SIZE; }
-void fo_cellsub(void) { T -= CELL_SIZE; }
 void fo_1plus(void)   { T++; }
 void fo_1sub(void)    { T--; }
 void fo_2star(void)   { T <<= 1; }
@@ -527,14 +516,6 @@ void c_execute(Cell *xt)
    P = savP;
 }
 void fo_execute(void) { Cell *xt; xt = PCELL(T); T = *S++; c_execute(xt); }
-void fo_fetchexecute(void)
-{
-   Cell *xt;
-
-   xt = PCELL(*PCELL(T)); T = *S++;
-   if (xt)
-      c_execute(xt);
-}
 void fo_co(void) { Cell tmp = I; I = CELL(P); P = PCELL(tmp); }
 
 int c_isdelim(int delim, int ch)
@@ -831,11 +812,6 @@ void fo_cstr(void)
 {
    c_comma(xt_docstr);
    c_commastr();
-}
-void fo_dotparen(void)
-{
-   c_word(')');
-   c_typer(CHAR(STR_ADDR(cH)),-1,0);
 }
 void fo_macro(void) { CTX = &dMACRO; }
 void fo_forth(void) { CTX = &dFORTH; }
@@ -1205,7 +1181,7 @@ void c_dict(void)
 		{"ALLOT",   fo_allot},
 		{",",       fo_comma},
 
-		{"I",       fo_rfetch},    /* control */
+      {"I",       fo_rfetch},    /* control */
 		{"EMPTY",   fo_empty},
 
       {"(",       fo_paren},
@@ -1215,7 +1191,6 @@ void c_dict(void)
 #ifndef MOORE_INTRO
 		{"'",	      fo_tick},
 		{"EXECUTE", fo_execute},
-		{"@EXECUTE",fo_fetchexecute},
 
 		{"R>",      fo_rfrom},     /* stack */
 		{"R@",	   fo_rfetch},
@@ -1242,7 +1217,6 @@ void c_dict(void)
       {"+!",      fo_plusstore},
       {"SPACE",   fo_space},
       {"SPACES",  fo_spaces},
-      {".(",      fo_dotparen},
 
 		{"?MS",     fo_qms},       /* extensions */
 		{"WORD",    fo_word},
@@ -1257,9 +1231,7 @@ void c_dict(void)
 
       {"CELL",    fo_cell},
       {"CELLS",   fo_cells},
-      {"CELL/",   fo_cellslash},
       {"CELL+",   fo_cellplus},
-      {"CELL-",   fo_cellsub},
 
       {"1+",      fo_1plus},
       {"1-",      fo_1sub},
@@ -1272,8 +1244,6 @@ void c_dict(void)
       {"APPEND",  fo_append},
       {"-TRAILING", fo_subtrailing},
 
-      {"NIP",     fo_nip},
-      {"ROT",     fo_rot},
       {"]",       fo_rbracket},
 
       {"(DLOPEN)",fo_dlopen},       /* foreign functions */
@@ -1284,9 +1254,6 @@ void c_dict(void)
 
       {"BLOCK",   fo_block},        /* memory mapped I/O */
       {"SAVE",    fo_save},
-
-      {"@+",      fo_fetchplus},
-      {"!+",      fo_storeplus},
 
       {"CO",      fo_co},           /* coroutines */
 /* --- END --- */
@@ -1393,6 +1360,7 @@ void fo_cold(void)
    }
 
 	fo_abort();
+   fo_mark();
 }
 
 void usage()

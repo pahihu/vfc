@@ -1,6 +1,6 @@
-61] ( forth dictionary)
+60] ( forth dictionary)
    <lit> 0branch branch <next> <."> <c">
-   exit ' execute @execute i
+   exit ' execute i
    >r r> r@ drop dup swap over
    c@ c! @ !
    a> >a a@ a! a@+ a!+
@@ -14,24 +14,24 @@
    < = >
    empty
 
-46] ( extensions)
+40] ( extensions)
    mark macro forth bye
-   ( here +! space spaces .(
+   ( here +! space spaces
    ?ms word :noname include move fill abort cold
    does>
-   cell cells cell/ cell+ cell- 1+ 1- 2* 2/
+   cell cells cell+ 1+ 1- 2* 2/
    type count -trailing place append
-   nip rot ]
+   ]
    (dlopen) (dlsym) (callc) sp@
    block save
-   zcount @+ !+
+   zcount
    co
 
-18] ( macro dictionary)
+17] ( macro dictionary)
    if else then
    begin while repeat again
    for next
    (
    ;
    ." aft
-   c" ['] literal [ postpone
+   c" literal [ postpone

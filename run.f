@@ -1,8 +1,29 @@
+decimal
 32 constant bl
 
+
+( Arithmetic ------------------------------------------------- )
+: cell/ ( n1 - n2)   cell / ;
+: cell- ( n1 - n2)   cell - ;
+
+
+( Stack ------------------------------------------------------ )
+: rot ( a b c -- b c a)   >R swap R> swap ;
+: nip ( a b - b)   swap drop ;
+
+
+( Memory ----------------------------------------------------- )
+: @+ ( a1 - a2 x)   >a a@+ a> swap ;
+: !+ ( a1 x - a2)   >a a!+ a> ;
+
+
+( Control structures ----------------------------------------- )
+: @xecute ( a)   @ if execute then ;
+
+
 ( Double words ----------------------------------------------- )
-: 2! ( lo hi a)   swap over ! cell+ ! ;
-: 2@ ( a - lo hi)   dup @ >R cell+ @ R> ;
+: 2! ( lo hi a)   >a a!+ a! ;
+: 2@ ( a - lo hi)   >a a@+ a@ swap ;
 
 : 2dup ( a b - a b a b)   over over ;
 : 2drop ( a b)   drop drop ;
@@ -20,6 +41,7 @@
 
 macro
 : [char]   char postpone literal ;
+: ['] ( 'name')   ' postpone literal ;
 forth
 
 
@@ -40,7 +62,7 @@ create values  ' @  , ' !  , ' +! ,
 
 : value ( n 'name')
    create ,
-   does>  values #msg @ cells +  @execute  0 #msg ! ;
+   does>  values #msg @ cells +  @ execute  0 #msg ! ;
 
 : to  1 #msg ! ;   : +to  2 #msg ! ;
 
@@ -50,11 +72,13 @@ create values  ' @  , ' !  , ' +! ,
 : >pad ( ca1 u1 - ca2)   pad place  pad ;
 
 create $pad 256 allot
-: s( ( 'text' - ca u)
-   41 word count  $pad place  $pad count ;
-: s+ ( to ca u - to)   rot dup >R append R> ;
+: c( ( 'text' - a)   41 word count $pad place $pad ;
+: s( ( 'text' - ca u)   c( count ;
+: .( ( 'text')   s( type ;
+: s+ ( to ca u - to)   >R over R> swap append ;
 
 : (abort) ( n ca)   swap IF  count type abort  THEN  drop ;
+
 
 macro
 : s" ( 'text')   postpone c"  postpone count ;
@@ -68,7 +92,7 @@ forth
 ( Deferred words --------------------------------------------- )
 : noop ;
 
-: defer ( 'name')   create ['] noop , does>  @execute ;
+: defer ( 'name')   create ['] noop , does>  @ execute ;
 : is ( xt 'name')   ' >body ! ;
 macro
 : [is] ( 'name')   ' >body postpone literal postpone ! ;
@@ -80,7 +104,7 @@ forth
 : function: ( narg 'name')
    here >r
    create , r> (dlsym) dup 0= abort" undefined" ,
-   does>  @+ swap @ (callc) ;
+   does>  >a a@+ a@ (callc) ;
 
 
 ( Timer ------------------------------------------------------ )
