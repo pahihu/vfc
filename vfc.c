@@ -12,6 +12,7 @@
  *
  * History
  * =======
+ * 230910AP added BASE
  * 230909AP removed NIP ROT CELL/ CELL- @+ !+ ['] @EXECUTE .(
  * 221014AP >A A> A@ A! A@+ A!+
  * 220930AP coroutines CO
@@ -194,14 +195,13 @@ unsigned char *MemMove(unsigned char *dst, unsigned char *src, unsigned long len
 {
    unsigned char *p = dst;
 
-   if (src + len < p)
-      while (len--)
-         *p++ = *src++;
-   else {
+   if (src + len < p) {
       src += len; p += len;
       while (len--)
          *--p = *--src;
-   }
+   } else
+      while (len--)
+         *p++ = *src++;
 
    return dst;
 }
@@ -360,6 +360,8 @@ void fo_rfrom(void)	{ fo_dup(); T = I; I = *R++; }
 void fo_rfetch(void) { fo_dup(); T = I; }
 void fo_swap(void)	{ Cell tmp = T; T = N; N = tmp; }
 void fo_over(void)	{ Cell tmp = N; fo_dup(); T = tmp; }
+
+void fo_base(void)   { fo_dup(); T = CELL(&BASE); }
 
 /* memory */
 void fo_cfetch(void) { T = *BYTE(T); }
@@ -1189,6 +1191,7 @@ void c_dict(void)
 		{"BYE",     fo_bye},
 
 #ifndef MOORE_INTRO
+      {"BASE",    fo_base},
 		{"'",	      fo_tick},
 		{"EXECUTE", fo_execute},
 

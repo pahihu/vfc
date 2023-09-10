@@ -18,7 +18,7 @@ decimal
 
 
 ( Control structures ----------------------------------------- )
-: @xecute ( a)   @ if execute then ;
+: @execute ( a)   @ dup if drop execute exit then drop ;
 
 
 ( Double words ----------------------------------------------- )
@@ -46,7 +46,7 @@ forth
 
 
 ( Debug ------------------------------------------------------ )
-: .h  hex . decimal ;
+: .h  base @ >R hex . R> base ! ;
 : .line ( a - a')   7 for dup c@ 255 and space 3 .r 1+ next ;
 : dump ( a n)
    15 + 16 / for
@@ -76,6 +76,7 @@ create $pad 256 allot
 : s( ( 'text' - ca u)   c( count ;
 : .( ( 'text')   s( type ;
 : s+ ( to ca u - to)   >R over R> swap append ;
+: ," ( 'text")   34 word count here swap  dup allot  move ;
 
 : (abort) ( n ca)   swap IF  count type abort  THEN  drop ;
 
