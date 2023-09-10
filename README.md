@@ -72,7 +72,7 @@ According to Julian Fondren, there are 4 different levels of Forth.
 3. DSLs that still aren't application level. Eg. Julian V. Noble's state
    machines and formula translator, even stuff like gl-helper.fs's SHADER: word.
 4. Application lexicons. You're no longer writing in Forth; you're writing in
-   'RPG Scene Definition Language' or 'Monster Description Language'.
+   *RPG Scene Definition Language* or *Monster Description Language*.
 
 Tons and tons of level#1 docs, and tons of statements to the effect that
 level#4 is where you really want to be. Tons of level#2 code and discussions:
