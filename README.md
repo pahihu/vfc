@@ -64,3 +64,18 @@ Foreign function interface example
     n = 42
 
     0 0 0 0 > bye
+
+According to Julian Fondren, there are 4 different levels of Forth.
+
+1. Core Forth, and the Forth machine
+2. Higher-level extensions: OO systems, quotations, data structures, FSL, etc.
+3. DSLs that still aren't application level. Eg. Julian V. Noble's state
+   machines and formula translator, even stuff like gl-helper.fs's SHADER: word.
+4. Application lexicons. You're no longer writing in Forth; you're writing in
+   'RPG Scene Definition Language' or 'Monster Description Language'.
+
+Tons and tons of level#1 docs, and tons of statements to the effect that
+level#4 is where you really want to be. Tons of level#2 code and discussions:
+coroutines, optimized tail recursion, lse64-style 'then'.
+
+See the directory [level4](https://github.com/pahihu/vfc/tree/master/level4) for level#4 example code.
