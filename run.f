@@ -100,6 +100,10 @@ macro
 forth
 
 
+( Coroutines ------------------------------------------------- )
+: co   R> R> swap >R >R ;
+
+
 ( Foreign interface ------------------------------------------ )
 : library ( 'name')   bl word (dlopen) ;
 : function: ( narg 'name')

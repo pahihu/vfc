@@ -12,7 +12,7 @@
  *
  * History
  * =======
- * 230910AP added BASE
+ * 230910AP added BASE removed CO, block file loaded instead of mmapped
  * 230909AP removed NIP ROT CELL/ CELL- @+ !+ ['] @EXECUTE .(
  * 221014AP >A A> A@ A! A@+ A!+
  * 220930AP coroutines CO
@@ -44,7 +44,6 @@
 #include <unistd.h>
 #include <dlfcn.h>
 #include <fcntl.h>
-#include <sys/mman.h>
 #include <errno.h>
 #include <string.h>
 
@@ -222,7 +221,7 @@ int FPutS(const char *s, FILE *stream)
 void xexit(int code)
 {
    if (origin)
-      munmap(origin, norigin);
+      free(origin);
    exit(code);
 }
 
@@ -301,7 +300,7 @@ void c_slurpline(void)
      c_unget(ch);
 }
 
-void c_type(char *s, int n)
+void c_type(const char *s, int n)
 {
     int i;
     
@@ -518,7 +517,6 @@ void c_execute(Cell *xt)
    P = savP;
 }
 void fo_execute(void) { Cell *xt; xt = PCELL(T); T = *S++; c_execute(xt); }
-void fo_co(void) { Cell tmp = I; I = CELL(P); P = PCELL(tmp); }
 
 int c_isdelim(int delim, int ch)
 {
@@ -1118,8 +1116,18 @@ void fo_block(void)
 
 void fo_save(void)
 {
-   if (-1 == msync(origin, norigin, MS_SYNC))
-      c_doabort(strerror(errno),-7);
+   int fd, e;
+
+   if ((fd = open(blkFile, O_WRONLY)) < 0) {
+     e = errno; goto ErrOut;
+   }
+   if (write(fd, origin, norigin) < 0) {
+     e = errno; close(fd); goto ErrOut;
+   }
+   close(fd);
+   return;
+ErrOut:
+   c_doabort(strerror(e),-7);
 }
 
 typedef struct _dict_entry {
@@ -1257,8 +1265,6 @@ void c_dict(void)
 
       {"BLOCK",   fo_block},        /* memory mapped I/O */
       {"SAVE",    fo_save},
-
-      {"CO",      fo_co},           /* coroutines */
 /* --- END --- */
 #endif
 		{NULL,		0},
@@ -1325,7 +1331,7 @@ void fo_cold(void)
    int fd;
 
    if (origin) {
-      munmap(origin,norigin);
+      free(origin);
       origin = 0;
    }
    if (M) free(M);
@@ -1354,10 +1360,13 @@ void fo_cold(void)
    if (fd >= 0) {
       off_t offs = lseek(fd, 0, SEEK_END);
       if (-1 != offs) {
-         norigin = offs;
-         origin = mmap(0, norigin, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-         if (MAP_FAILED == origin)
-            origin = 0;
+         if ((origin = malloc(norigin = offs))) {
+            lseek(fd, 0, SEEK_SET);
+            read(fd, origin, norigin);
+            c_type("block file ",-1);
+            c_type(blkFile,-1);
+            fo_cr();
+         }
       }
       close(fd);
    }
