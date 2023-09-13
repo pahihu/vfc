@@ -78,4 +78,4 @@ Tons and tons of level#1 docs, and tons of statements to the effect that
 level#4 is where you really want to be. Tons of level#2 code and discussions:
 coroutines, optimized tail recursion, lse64-style 'then'.
 
-See the directory [level4](https://github.com/pahihu/vfc/tree/master/level4) for level#4 example code.
+See the directory [level4](https://github.com/pahihu/vfc/tree/master/level4) for example code.
