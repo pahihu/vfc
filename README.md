@@ -65,7 +65,7 @@ Foreign function interface example
 
     0 0 0 0 > bye
 
-According to Julian Fondren, there are 4 different levels of Forth.
+According to [Julian Fondren](https://bitbucket.org/demonview/workspace/repositories/), there are 4 different levels of Forth.
 
 1. Core Forth, and the Forth machine
 2. Higher-level extensions: OO systems, quotations, data structures, FSL, etc.

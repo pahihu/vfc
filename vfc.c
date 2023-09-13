@@ -13,6 +13,7 @@
  * History
  * =======
  * 230910AP added BASE removed CO, block file loaded instead of mmapped
+ *          added decimal number input #1234
  * 230909AP removed NIP ROT CELL/ CELL- @+ !+ ['] @EXECUTE .(
  * 221014AP >A A> A@ A! A@+ A!+
  * 220930AP coroutines CO
@@ -708,6 +709,8 @@ Cell c_tonumber(Byte *s)
     	sign = 1; p++;
 	} else if ('$' == *p) {
       BASE = 16; p++;
+   } else if ('#' == *p) {
+      BASE = 10; p++;
    }
 	while ((ch = ToLower(*p++))) {
 		if (!c_digitq(ch)) { 
