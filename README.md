@@ -53,7 +53,7 @@ Foreign function interface example
     #include <stdio.h>
     void test_c(int n) { printf("n = %d\n", n); }
 
-    ===> cc -shared -fPIC -o libtest.so test.c
+    ===> cc -shared -fPIC -o libtest.so test.c -ldl
 
     ===> vfc run.f
     library ./libtest.so
