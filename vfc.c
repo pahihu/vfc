@@ -87,7 +87,6 @@ typedef struct Dict {
 
 Cell memSize;
 const char *blkFile;
-FILE *devIN, *devOUT;
 Cell *S0, *R0;
 Cell BASE = 10;      /* number base */
 void (*staFn)(Byte*);
@@ -133,7 +132,6 @@ void fo_save(void);
 #define DBG(lvl,stmt) if(dbg>lvl){stmt;}
 #endif
 
-Cell crossLine;
 #define CNT_SIZE  8
 #define STR_ADDR(x)  (BYTE(x) + CNT_SIZE)
 
@@ -249,56 +247,59 @@ int c_iscrlf(int ch)
 }
 
 #define NIOBUF 256
-int niobuf = 0;
-char iobuf[NIOBUF+1];
+char conbufOUT[NIOBUF+2];
+char conbufIN[NIOBUF+2];
+
+typedef struct _IODESC {
+   int   f_nbuf;
+   char *f_buf;
+   int   f_IN;
+   FILE *f_dev;
+} IODESC;
+IODESC currIN, currOUT;
+int ioinput = 0;
+
+#define noutbuf   currOUT.f_nbuf
+#define outbuf    currOUT.f_buf
+#define devOUT    currOUT.f_dev
+
+#define ninbuf    currIN.f_nbuf
+#define inbuf     currIN.f_buf
+#define IN        currIN.f_IN
+#define devIN     currIN.f_dev
+
+void io_init(IODESC *desc,FILE *dev,char *buf)
+{
+   desc->f_dev  = dev;
+   desc->f_nbuf = 0;
+   desc->f_buf  = buf;
+   desc->f_IN   = 0;
+}
 
 void c_flush(int force)
 {
-   if (force || (NIOBUF == niobuf)) {
-      iobuf[niobuf] = '\0';
-      FPutS(&iobuf[0], devOUT);
-      niobuf = 0;
+   if (force || (NIOBUF == noutbuf)) {
+      outbuf[noutbuf] = '\0';
+      FPutS(&outbuf[0], devOUT);
+      noutbuf = 0;
    }
 }
 
 void c_emit(int ch)
 {
+   if (ioinput)
+      noutbuf = 0;
+   ioinput = 0;
    c_flush(0);
-   iobuf[niobuf++] = ch;
+   outbuf[noutbuf++] = ch;
 }
 
-int Ch = 0;
 int  c_key(void)
 {
    int ch;
 
-   if (Ch) {
-     ch = Ch; Ch = 0;
-     return ch;
-   }
-
    ch = fgetc(devIN);
-   if (c_iscrlf(ch))
-      crossLine = 1;
    return ch;
-}
-
-void c_unget(int ch)
-{
-   Ch = ch;
-}
-
-void c_slurpline(void)
-{
-   int ch;
-   int cnt = 0;
-
-   ch = c_key();
-   while (EOF != ch && !crossLine) {
-      cnt++; ch = c_key();
-   }
-   if (!cnt)
-     c_unget(ch);
 }
 
 void c_type(const char *s, int n)
@@ -524,27 +525,47 @@ int c_isdelim(int delim, int ch)
     return BL == delim ? (ch <= 32) : delim == ch;
 }
 
-void c_text(Byte *p, int delim)
+int c_refill(void)
+{
+   int ch;
+
+   if (isatty(fileno(devOUT)) && !ioinput)
+      c_flush(1);
+
+   ninbuf = 0; ioinput = 1;
+   ch = c_key();
+   if (EOF == ch)
+      return 1;
+   while (EOF != ch && !c_iscrlf(ch)) {
+      inbuf[ninbuf++] = ch;
+      ch = c_key();
+   }
+   inbuf[ninbuf++] = 0;
+   inbuf[ninbuf++] = ' ';
+   IN = 0;
+
+   DBG(2,fprintf(stdout,"REFILL: [%s]\n",inbuf));
+   return 0;
+}
+
+void c_skipscan(Byte *p, int delim)
 {
 	int ch;
    Byte *q = p;
 
-   c_flush(1);
-
    p = STR_ADDR(p);
-	ch = c_key();
-	while (EOF != ch && c_isdelim(delim, ch))
-		ch = c_key();
-   crossLine = 0;
-	while (EOF != ch && !c_isdelim(delim, ch)) {
+	ch = inbuf[IN++];
+	while (IN < ninbuf && c_isdelim(delim, ch))
+		ch = inbuf[IN++];
+	while (IN < ninbuf && !c_isdelim(delim, ch)) {
 		*p++ = ch;
-		ch = c_key();
+		ch = inbuf[IN++];
 	}
 	*p++ = '\0';
    STR_CNT(q) = StrLen(CHAR(STR_ADDR(q)));
 }
 
-void c_word(int delim)  { c_text(cH, delim); }
+void c_word(int delim)  { c_skipscan(cH, delim); }
 void fo_paren(void)     { c_word(')'); }
 void fo_word(void)      { c_word(255 & T); T = CELL(H); }
 
@@ -1048,41 +1069,44 @@ void c_mainloop()
 
    savERR = errENV; errENV = &errHandler;
 	if ((err = setjmp(errHandler))) {
-      c_slurpline();
       DBG(1,fprintf(stderr,"--- c_mainloop ---\n"));
       errENV = savERR;
       c_abort(err);
    }
 
-   crossLine = 1;
 	for (;;) {
-      if (crossLine && isatty(fileno(devIN))) {
+      if (isatty(fileno(devIN))) {
          fo_cr();
          c_dotr(S[2], 0, BASE);
          c_dotr(S[1], 0, BASE);
          c_dotr(S[0], 0, BASE);
          c_dotr(   T, 0, BASE);
          c_type("> ", -1);
-         crossLine = 0;
       }
-		c_word(BL);
-      if (0 == STR_CNT(cH))
-         break;
-		(*staFn)(cH);
+      if (c_refill())
+         return;
+      for (;;) {
+		   c_word(BL);
+         if (0 == *STR_ADDR(cH))
+            break;
+		   (*staFn)(cH);
+      }
 	}
 }
 
 void c_include(char *path)
 {
-   FILE * volatile savIN;
+   FILE * volatile fin;
    jmp_buf *savERR, errHandler;
+   IODESC savIN;
    volatile int err;
    char tmp[FILENAME_MAX];
+   char buf[NIOBUF+2];
 
    StrCpy(tmp,path);
 
    err = 0;
-   savIN = devIN;
+   savIN = currIN;
    savERR = errENV; errENV = &errHandler;
 
    if ((err = setjmp(errHandler))) {
@@ -1090,16 +1114,17 @@ void c_include(char *path)
       goto Lexit;
    }
 
-   devIN = fopen(path, "rt");
-   if (!devIN)
+   fin = fopen(path, "rt");
+   if (!fin)
       c_doabort(path,-6);
+   io_init(&currIN, fin, buf);
 	c_mainloop();
 
 Lexit:
-   if (devIN)
-      fclose(devIN);
+   if (fin)
+      fclose(fin);
    errENV = savERR;
-   devIN = savIN;
+   currIN = savIN;
    if (err)
       c_throw(errENV,err);
    return;
@@ -1108,8 +1133,8 @@ void fo_include(void) { c_word(BL); c_include(CHAR(STR_ADDR(cH))); }
 
 void c_init_io(void)
 {
-	devIN  = stdin;
-	devOUT = stdout;
+   io_init(&currIN,  stdin,  conbufIN);
+   io_init(&currOUT, stdout, conbufOUT);
 }
 
 void fo_block(void)
@@ -1358,6 +1383,8 @@ void fo_cold(void)
    xt_comma   = CELL(c_find(dFORTH,BYTE(",")));
 
    sobj[nsobj++] = dlopen(NULL,RTLD_LAZY);
+
+   c_init_io();
 
    fd = open(blkFile, O_RDWR);
    if (fd >= 0) {
