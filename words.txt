@@ -12,7 +12,7 @@
 
 ( control structures)
         IF ELSE THEN 
-        FOR AFT I NEXT
+        FOR I NEXT
         BEGIN WHILE REPEAT UNTIL
         EXIT EXECUTE
 
@@ -24,7 +24,7 @@
         :NONAME
 
 ( compiler)
-        , ALLOT ." C"
+        , ALLOT C"
 
 ( miscellaneous)
         ( HERE PAD ABORT COLD ?MS

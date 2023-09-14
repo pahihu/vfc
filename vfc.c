@@ -14,6 +14,7 @@
  * =======
  * 230914AP removed LITERAL POSTPONE [ ] added PAD
  *          removed address register, ." and <."> runtime
+ *          removed AFT
  * 230910AP added BASE removed CO, block file loaded instead of mmapped
  *          added decimal number input #1234
  * 230909AP removed NIP ROT CELL/ CELL- @+ !+ ['] @EXECUTE .(
@@ -690,13 +691,6 @@ void fo_donext(void)
         P++;
     }
 }
-void fo_aft(void)
-{
-	c_comma(xt_branch);
-	T = CELL(H);
-	c_comma(0);
-   fo_dup(); N = CELL(H);
-}
 
 int c_digitq(int ch)
 {
@@ -894,21 +888,17 @@ void c_compiler(Byte *w)
 	}
 }
 
-Cell wtick;
 void fo_tick(void)
 {
    Byte *w;
    Cell *xt;
 
    c_word(BL); w = STR_ADDR(cH);
-   wtick = -1;
 	xt = c_find(dMACRO, w);
 	if (!xt) {
-      wtick = 1;
       xt = c_find(dFORTH, w);
    }
    if (!xt) {
-      wtick = 0;
       c_doabort("undefined",-4);
    }
    fo_dup(); T = CELL(xt);
@@ -1278,7 +1268,6 @@ void c_dict(void)
 		{"REPEAT",	fo_repeat},
 		{"UNTIL",	fo_until},
 
-      {"AFT",     fo_aft},          /* eForth */
       {"C\"",     fo_cstr},
 #endif
 		{NULL,		0},

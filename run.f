@@ -26,7 +26,9 @@ decimal
 : lit ( x)   compile <lit> , ;
 macro
 : \ ( 'name')   ' , ;
+: aft ( a - a A)   drop compile branch here 0 , here swap ;
 forth
+
 
 
 ( Double words ----------------------------------------------- )
