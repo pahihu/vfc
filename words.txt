@@ -21,10 +21,9 @@
 
 ( defining)
         : ; VARIABLE CONSTANT CREATE DOES>
-        :NONAME
 
 ( compiler)
-        , ALLOT C"
+        , ALLOT C" ]
 
 ( miscellaneous)
         ( HERE PAD ABORT COLD ?MS

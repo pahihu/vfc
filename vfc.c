@@ -12,9 +12,9 @@
  *
  * History
  * =======
- * 230914AP removed LITERAL POSTPONE [ ] added PAD
+ * 230914AP removed LITERAL POSTPONE [ added PAD
  *          removed address register, ." and <."> runtime
- *          removed AFT
+ *          removed AFT :NONAME
  * 230910AP added BASE removed CO, block file loaded instead of mmapped
  *          added decimal number input #1234
  * 230909AP removed NIP ROT CELL/ CELL- @+ !+ ['] @EXECUTE .(
@@ -631,13 +631,6 @@ Cell* c_find(DICT *dict,Byte *s)
 
 void fo_lbracket(void) { staFn = c_interpreter; }
 void fo_rbracket(void) { staFn = c_compiler; }
-void fo_noname(void)
-{
-   fo_dup(); T = CELL(H);
-   c_comma(CELL(fo_docol));
-   fo_rbracket();
-}
-
 void fo_colon(void) { DICT *d = fo_header(); d->cfa = fo_docol; fo_rbracket(); }
 void fo_semi(void)  { c_comma(xt_exit); fo_lbracket(); }
 
@@ -1217,7 +1210,6 @@ void c_dict(void)
 
 		{"?MS",     fo_qms},       /* extensions */
 		{"WORD",    fo_word},
-      {":NONAME", fo_noname},
       {"INCLUDE", fo_include},
       {"MOVE",    fo_move},
       {"FILL",    fo_fill},
@@ -1269,6 +1261,7 @@ void c_dict(void)
 		{"UNTIL",	fo_until},
 
       {"C\"",     fo_cstr},
+      {"]",       fo_rbracket},
 #endif
 		{NULL,		0},
 	};
