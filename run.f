@@ -21,6 +21,14 @@ decimal
 : @execute ( a)   @ dup if drop execute exit then drop ;
 
 
+( Compiler --------------------------------------------------- )
+: compile   R> dup @ , cell+ >R ;
+: lit ( x)   compile <lit> , ;
+macro
+: \ ( 'name')   ' , ;
+forth
+
+
 ( Double words ----------------------------------------------- )
 : 2! ( lo hi a)   >a a!+ a! ;
 : 2@ ( a - lo hi)   >a a@+ a@ swap ;
@@ -37,11 +45,12 @@ decimal
 
 : char ( 'name' - c)   bl word count  drop c@ ;
 
-: >body ( xt - a)   [ 2 cells ] literal + ;
+2 cells constant +body
+: >body ( xt - a)   +body + ;
 
 macro
-: [char]   char postpone literal ;
-: ['] ( 'name')   ' postpone literal ;
+: [char]   char lit ;
+: ['] ( 'name')   ' lit ;
 forth
 
 
@@ -68,7 +77,6 @@ create values  ' @  , ' !  , ' +! ,
 
 
 ( Strings ---------------------------------------------------- )
-: pad ( - ca)   here [ cell 16 * ] literal + ;
 : >pad ( ca1 u1 - ca2)   pad place  pad ;
 
 create $pad 256 allot
@@ -82,8 +90,8 @@ create $pad 256 allot
 
 
 macro
-: s" ( 'text')   postpone c"  postpone count ;
-: abort" ( 'text')   postpone c" postpone (abort) ;
+: s" ( 'text')   \ c"  compile count ;
+: abort" ( 'text')   \ c" compile (abort) ;
 forth
 
 ( Structures ------------------------------------------------- )
@@ -96,7 +104,7 @@ forth
 : defer ( 'name')   create ['] noop , does>  @ execute ;
 : is ( xt 'name')   ' >body ! ;
 macro
-: [is] ( 'name')   ' >body postpone literal postpone ! ;
+: [is] ( 'name')   ' >body lit compile ! ;
 forth
 
 

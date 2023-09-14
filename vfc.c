@@ -12,6 +12,7 @@
  *
  * History
  * =======
+ * 230914AP removed LITERAL POSTPONE [ ] added PAD
  * 230910AP added BASE removed CO, block file loaded instead of mmapped
  *          added decimal number input #1234
  * 230909AP removed NIP ROT CELL/ CELL- @+ !+ ['] @EXECUTE .(
@@ -108,7 +109,6 @@ Cell xt_dolit,xt_0branch, xt_branch;
 Cell xt_tor, xt_donext;
 Cell xt_exit;
 Cell xt_dodotstr, xt_docstr;
-Cell xt_comma;
 
 void xexit(int);
  int c_isdelim(int delim, int ch);
@@ -475,6 +475,7 @@ void fo_1sub(void)    { T--; }
 void fo_2star(void)   { T <<= 1; }
 void fo_2slash(void)  { T >>= 1; }
 void fo_here(void)    { fo_dup(); T = CELL(H); }
+void fo_pad(void)     { fo_dup(); T = CELL(PAD); }
 void fo_comma(void)   { c_comma(T); fo_drop(); }
 void c_align(Cell n)  { c_allot((n + CELL_SIZE - 1) / CELL_SIZE); }
 void fo_allot(void)   { Cell tmp = T; fo_drop(); c_align(tmp); }
@@ -923,22 +924,6 @@ void fo_tick(void)
    }
    fo_dup(); T = CELL(xt);
 }
-void fo_bratick(void)
-{
-   fo_tick();
-   fo_literal();
-}
-void fo_postpone(void)
-{
-   fo_tick();
-   if (wtick < 0) { // [COMPILE]
-      fo_comma();
-   }
-   else { // COMPILE
-      fo_literal();
-      c_comma(xt_comma);
-   }
-}
 void fo_dlopen(void) /* : (dlopen) ( sa -- ) */
 {
    Byte *w;
@@ -1253,6 +1238,7 @@ void c_dict(void)
 		{"FORTH",   fo_forth},
 
       {"HERE",    fo_here},
+      {"PAD",     fo_pad},
       {"+!",      fo_plusstore},
       {"SPACE",   fo_space},
       {"SPACES",  fo_spaces},
@@ -1282,8 +1268,6 @@ void c_dict(void)
       {"PLACE",   fo_place},
       {"APPEND",  fo_append},
       {"-TRAILING", fo_subtrailing},
-
-      {"]",       fo_rbracket},
 
       {"(DLOPEN)",fo_dlopen},       /* foreign functions */
       {"(DLSYM)", fo_dlsym},
@@ -1316,10 +1300,6 @@ void c_dict(void)
       {"AFT",     fo_aft},
 
       {"C\"",     fo_cstr},
-      {"[']",     fo_bratick},
-      {"LITERAL", fo_literal},
-      {"[",       fo_lbracket},
-      {"POSTPONE",fo_postpone},
 #endif
 		{NULL,		0},
 	};
@@ -1380,7 +1360,6 @@ void fo_cold(void)
 	xt_donext  = CELL(c_find(dFORTH,BYTE("<NEXT>")));
    xt_dodotstr= CELL(c_find(dFORTH,BYTE("<.\">")));
    xt_docstr  = CELL(c_find(dFORTH,BYTE("<C\">")));
-   xt_comma   = CELL(c_find(dFORTH,BYTE(",")));
 
    sobj[nsobj++] = dlopen(NULL,RTLD_LAZY);
 
