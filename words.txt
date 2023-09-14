@@ -1,37 +1,55 @@
-60] ( forth dictionary)
-   <lit> 0branch branch <next> <."> <c">
-   exit ' execute i
-   >r r> r@ drop dup swap over
-   c@ c! @ !
-   a> >a a@ a! a@+ a!+
-   and or xor invert 0=
-   + - * / mod
-   key emit
-   : constant variable
-   cr .r . hex decimal
-   , allot create
-   /mod abs negate min max */
-   < = >
-   empty
+( run-time)
+        <LIT> 0BRANCH BRANCH <NEXT> <C">
 
-40] ( extensions)
-   mark macro forth bye
-   ( here +! space spaces
-   ?ms word :noname include move fill abort cold
-   does>
-   cell cells cell+ 1+ 1- 2* 2/
-   type count -trailing place append
-   ]
-   (dlopen) (dlsym) (callc) sp@
-   block save
-   zcount
-   co
+( comparison)
+        < = > 0= NOT
 
-17] ( macro dictionary)
-   if else then
-   begin while repeat again
-   for next
-   (
-   ;
-   ." aft
-   c" literal [ postpone
+( arithmetic and logical)
+        1+ 1- 2* 2/
+        CELL CELLS CELL+
+        + - * / MOD /MOD */ ABS NEGATE MIN MAX
+        AND OR XOR INVERT
+
+( control structures)
+        IF ELSE THEN 
+        FOR AFT I NEXT
+        BEGIN WHILE REPEAT UNTIL
+        EXIT EXECUTE
+
+( numeric conversion)
+        BASE DECIMAL HEX . .R
+
+( defining)
+        : ; VARIABLE CONSTANT CREATE DOES>
+        :NONAME
+
+( compiler)
+        , ALLOT ." C"
+
+( miscellaneous)
+        ( HERE PAD ABORT COLD ?MS
+
+
+~~~
+( stack)
+        DROP DUP SWAP OVER >R R@ R>
+
+( memory)
+        @ ! +! C@ C! MOVE FILL
+
+( terminal)
+        CR SPACE SPACES EMIT KEY WORD
+
+( strings)
+        COUNT PLACE APPEND TYPE -TRAILING
+
+( storage)
+        BLOCK SAVE
+        INCLUDE
+
+( foreign-function interface)
+        (DLOPEN) (DLSYM) (CALLC) SP@ ZCOUNT
+
+( dictionary)
+        MACRO FORTH MARK EMPTY '
+

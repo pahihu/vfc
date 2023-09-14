@@ -13,8 +13,8 @@ decimal
 
 
 ( Memory ----------------------------------------------------- )
-: @+ ( a1 - a2 x)   >a a@+ a> swap ;
-: !+ ( a1 x - a2)   >a a!+ a> ;
+: @+ ( a1 - a2 x)   dup cell+ swap @ ;
+: !+ ( a1 x - a2)   over ! cell+ ;
 
 
 ( Control structures ----------------------------------------- )
@@ -30,8 +30,8 @@ forth
 
 
 ( Double words ----------------------------------------------- )
-: 2! ( lo hi a)   >a a!+ a! ;
-: 2@ ( a - lo hi)   >a a@+ a@ swap ;
+: 2! ( lo hi a)   swap over ! cell+ ! ;
+: 2@ ( a - lo hi)   dup cell+ @ swap @ ;
 
 : 2dup ( a b - a b a b)   over over ;
 : 2drop ( a b)   drop drop ;
@@ -78,18 +78,20 @@ create values  ' @  , ' !  , ' +! ,
 
 ( Strings ---------------------------------------------------- )
 : >pad ( ca1 u1 - ca2)   pad place  pad ;
+: print ( ca)   count type ;
 
 create $pad 256 allot
-: c( ( 'text' - a)   41 word count $pad place $pad ;
+: c( ( 'text' - a)   [char] ) word count $pad place $pad ;
 : s( ( 'text' - ca u)   c( count ;
 : .( ( 'text')   s( type ;
 : s+ ( to ca u - to)   >R over R> swap append ;
-: ," ( 'text")   34 word count here swap  dup allot  move ;
+: ," ( 'text")   [char] " word count here swap  dup allot  move ;
 
-: (abort) ( n ca)   swap IF  count type abort  THEN  drop ;
+: (abort) ( n ca)   swap IF  print abort  THEN  drop ;
 
 
 macro
+: ." ( 'text')   \ c" compile print ;
 : s" ( 'text')   \ c"  compile count ;
 : abort" ( 'text')   \ c" compile (abort) ;
 forth
@@ -117,7 +119,7 @@ forth
 : function: ( narg 'name')
    here >r
    create , r> (dlsym) dup 0= abort" undefined" ,
-   does>  >a a@+ a@ (callc) ;
+   does>  dup @ swap cell+ @ (callc) ;
 
 
 ( Timer ------------------------------------------------------ )

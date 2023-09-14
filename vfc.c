@@ -13,6 +13,7 @@
  * History
  * =======
  * 230914AP removed LITERAL POSTPONE [ ] added PAD
+ *          removed address register, ." and <."> runtime
  * 230910AP added BASE removed CO, block file loaded instead of mmapped
  *          added decimal number input #1234
  * 230909AP removed NIP ROT CELL/ CELL- @+ !+ ['] @EXECUTE .(
@@ -75,7 +76,6 @@ typedef unsigned char Byte;
 Cell *M = 0;         /* memory */
 Cell *P,*W;			   /* indirect-threaded code IP, W */
 Cell *S,T,I,*R;		/* data stack ptr, top, rtop, return stack ptr */
-Cell A;              /* address register */
 
 #define N   *S
 
@@ -108,7 +108,7 @@ int dbg=0;
 Cell xt_dolit,xt_0branch, xt_branch;
 Cell xt_tor, xt_donext;
 Cell xt_exit;
-Cell xt_dodotstr, xt_docstr;
+Cell xt_docstr;
 
 void xexit(int);
  int c_isdelim(int delim, int ch);
@@ -371,13 +371,6 @@ void fo_fetch(void)  { T = *PCELL(T); }
 void fo_store(void)  { *PCELL(T) = *S++; fo_drop(); }
 void fo_plusstore(void)  { *PCELL(T) += *S++; fo_drop(); }
 
-void fo_toa(void)    { A = T; fo_drop(); }
-void fo_afrom(void)  { fo_dup(); T = A; }
-void fo_afetch(void) { fo_dup(); T = *PCELL(A); }
-void fo_astore(void) { *PCELL(A) = T; fo_drop(); }
-void fo_afetchplus(void)  { fo_afetch(); A += sizeof(Cell); }
-void fo_astoreplus(void)  { fo_astore(); A += sizeof(Cell); }
-
 /* logic */
 void fo_and(void)	 { T &= *S++; }
 void fo_or(void)	 { T |= *S++; }
@@ -501,6 +494,7 @@ void fo_else(void)
 void fo_then(void)   { *PCELL(T) = CELL(H); fo_drop(); }
 void fo_begin(void)  { fo_dup(); T = CELL(H); }
 void fo_again(void)  { c_comma(xt_branch); c_comma(T); fo_drop(); }
+void fo_until(void)  { c_comma(xt_0branch); c_comma(T); fo_drop(); }
 void fo_while(void)  { fo_if(); }
 void fo_repeat(void) /* ( beginP whileP -- ) */
 {
@@ -828,11 +822,6 @@ void c_commastr(void)
    c_word('"');
    c_align(STRlen(H));
 }
-void fo_dotstr(void)
-{
-   c_comma(xt_dodotstr);
-   c_commastr();
-}
 void fo_cstr(void)
 {
    c_comma(xt_docstr);
@@ -1157,7 +1146,6 @@ void c_dict(void)
 		{"0BRANCH", fo_0branch},
 		{"BRANCH",  fo_branch},
 		{"<NEXT>",  fo_donext},
-      {"<.\">",   fo_dodotstr},
       {"<C\">",   fo_docstr},
 		{">R",      fo_tor},
 		{"EXIT",    fo_exit},
@@ -1221,12 +1209,6 @@ void c_dict(void)
 		{"C@",      fo_cfetch},    /* memory */
 		{"C!",      fo_cstore},
 
-      {"A>",      fo_afrom},     /* address register */
-      {">A",      fo_toa},
-      {"A@",      fo_afetch},
-      {"A!",      fo_astore},
-      {"A@+",     fo_afetchplus},
-      {"A!+",     fo_astoreplus},
       {"0=",      fo_zequal},
 
 		{"CONSTANT",fo_constant},
@@ -1294,11 +1276,9 @@ void c_dict(void)
 		{"BEGIN",	fo_begin},
 		{"WHILE",	fo_while},
 		{"REPEAT",	fo_repeat},
-		{"AGAIN",	fo_again},
+		{"UNTIL",	fo_until},
 
-      {".\"",     fo_dotstr},       /* eForth */
-      {"AFT",     fo_aft},
-
+      {"AFT",     fo_aft},          /* eForth */
       {"C\"",     fo_cstr},
 #endif
 		{NULL,		0},
@@ -1358,7 +1338,6 @@ void fo_cold(void)
 	xt_dolit   = CELL(c_find(dFORTH,BYTE("<LIT>")));
 	xt_tor     = CELL(c_find(dFORTH,BYTE(">R")));
 	xt_donext  = CELL(c_find(dFORTH,BYTE("<NEXT>")));
-   xt_dodotstr= CELL(c_find(dFORTH,BYTE("<.\">")));
    xt_docstr  = CELL(c_find(dFORTH,BYTE("<C\">")));
 
    sobj[nsobj++] = dlopen(NULL,RTLD_LAZY);
