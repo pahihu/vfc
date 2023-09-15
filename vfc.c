@@ -12,6 +12,7 @@
  *
  * History
  * =======
+ * 230915AP added LOAD OFFSET
  * 230914AP removed LITERAL POSTPONE [ added PAD
  *          removed address register, ." and <."> runtime
  *          removed AFT :NONAME
@@ -91,6 +92,7 @@ Cell memSize;
 const char *blkFile;
 Cell *S0, *R0;
 Cell BASE = 10;      /* number base */
+Cell OFFSET = 0;     /* block offset */
 void (*staFn)(Byte*);
 DICT **CTX;			   /* current vocabulary ptr */
 DICT *dFORTH,*dMACRO;/* FORTH dict, MACRO dict */
@@ -126,6 +128,7 @@ void _abort(void);
 void fo_abort(void);
 void fo_cold(void);
 void fo_save(void);
+char* c_block(Cell blk);
 
 #ifdef NDEBUG
 #define DBG(lvl,stmt)
@@ -194,13 +197,15 @@ unsigned char *MemMove(unsigned char *dst, unsigned char *src, unsigned long len
 {
    unsigned char *p = dst;
 
-   if (src + len < p) {
+   if (src <= p && p < src + len)
+   {
       src += len; p += len;
       while (len--)
          *--p = *--src;
-   } else
+   } else {
       while (len--)
          *p++ = *src++;
+   }
 
    return dst;
 }
@@ -256,6 +261,7 @@ typedef struct _IODESC {
    char *f_buf;
    int   f_IN;
    FILE *f_dev;
+   Cell  f_BLK;
 } IODESC;
 IODESC currIN, currOUT;
 int ioinput = 0;
@@ -268,13 +274,15 @@ int ioinput = 0;
 #define inbuf     currIN.f_buf
 #define IN        currIN.f_IN
 #define devIN     currIN.f_dev
+#define BLK       currIN.f_BLK
 
-void io_init(IODESC *desc,FILE *dev,char *buf)
+void io_init(IODESC *desc,FILE *dev,char *buf,Cell blk)
 {
    desc->f_dev  = dev;
-   desc->f_nbuf = 0;
-   desc->f_buf  = buf;
+   desc->f_nbuf = blk ? 1024 : 0;
+   desc->f_buf  = blk ? c_block(blk) : buf;
    desc->f_IN   = 0;
+   desc->f_BLK  = blk;
 }
 
 void c_flush(int force)
@@ -364,6 +372,7 @@ void fo_swap(void)	{ Cell tmp = T; T = N; N = tmp; }
 void fo_over(void)	{ Cell tmp = N; fo_dup(); T = tmp; }
 
 void fo_base(void)   { fo_dup(); T = CELL(&BASE); }
+void fo_offset(void) { fo_dup(); T = CELL(&OFFSET); }
 
 /* memory */
 void fo_cfetch(void) { T = *BYTE(T); }
@@ -496,10 +505,9 @@ void fo_then(void)   { *PCELL(T) = CELL(H); fo_drop(); }
 void fo_begin(void)  { fo_dup(); T = CELL(H); }
 void fo_again(void)  { c_comma(xt_branch); c_comma(T); fo_drop(); }
 void fo_until(void)  { c_comma(xt_0branch); c_comma(T); fo_drop(); }
-void fo_while(void)  { fo_if(); }
-void fo_repeat(void) /* ( beginP whileP -- ) */
+void fo_while(void)  { fo_if(); fo_swap(); }
+void fo_repeat(void) /* ( whileP beginP -- ) */
 {
-   fo_swap();
    fo_again();
    fo_then();
 }
@@ -528,6 +536,10 @@ int c_refill(void)
    if (isatty(fileno(devOUT)) && !ioinput)
       c_flush(1);
 
+   if (BLK) {
+      return IN ? 1 : 0;
+   }
+
    ninbuf = 0; ioinput = 1;
    ch = c_key();
    if (EOF == ch)
@@ -536,11 +548,10 @@ int c_refill(void)
       inbuf[ninbuf++] = ch;
       ch = c_key();
    }
-   inbuf[ninbuf++] = 0;
    inbuf[ninbuf++] = ' ';
    IN = 0;
 
-   DBG(2,fprintf(stdout,"REFILL: [%s]\n",inbuf));
+   DBG(2,fprintf(stdout,"REFILL: [%s] ninbuf=%d\n",inbuf,ninbuf));
    return 0;
 }
 
@@ -1032,7 +1043,7 @@ void c_mainloop()
    }
 
 	for (;;) {
-      if (isatty(fileno(devIN))) {
+      if (devIN && isatty(fileno(devIN))) {
          fo_cr();
          c_dotr(S[2], 0, BASE);
          c_dotr(S[1], 0, BASE);
@@ -1044,7 +1055,7 @@ void c_mainloop()
          return;
       for (;;) {
 		   c_word(BL);
-         if (0 == *STR_ADDR(cH))
+         if (0 == STR_CNT(cH))
             break;
 		   (*staFn)(cH);
       }
@@ -1074,7 +1085,7 @@ void c_include(char *path)
    fin = fopen(path, "rt");
    if (!fin)
       c_doabort(path,-6);
-   io_init(&currIN, fin, buf);
+   io_init(&currIN, fin, buf, 0);
 	c_mainloop();
 
 Lexit:
@@ -1087,16 +1098,32 @@ Lexit:
    return;
 }
 void fo_include(void) { c_word(BL); c_include(CHAR(STR_ADDR(cH))); }
+void fo_load(void)
+{
+   IODESC savIN;
+   Cell blk;
+
+   blk = T; fo_drop();
+   savIN  = currIN;
+   io_init(&currIN, NULL, NULL, blk);
+   c_mainloop();
+   currIN = savIN;
+}
 
 void c_init_io(void)
 {
-   io_init(&currIN,  stdin,  conbufIN);
-   io_init(&currOUT, stdout, conbufOUT);
+   io_init(&currIN,  stdin,  conbufIN, 0);
+   io_init(&currOUT, stdout, conbufOUT, 0);
+}
+
+char* c_block(Cell blk)
+{
+   return origin? CHAR(origin) + 1024 * (blk + OFFSET) : 0;
 }
 
 void fo_block(void)
 {
-   T = origin? CELL(BYTE(origin) + 1024 * T) : 0;
+   T = CELL(c_block(T));
 }
 
 void fo_save(void)
@@ -1239,8 +1266,10 @@ void c_dict(void)
       {"SP@",     fo_spat},
       {"ZCOUNT",  fo_zcount},
 
-      {"BLOCK",   fo_block},        /* memory mapped I/O */
+      {"BLOCK",   fo_block},       /* memory block storage */
       {"SAVE",    fo_save},
+      {"LOAD",    fo_load},
+      {"OFFSET",  fo_offset},
 /* --- END --- */
 #endif
 		{NULL,		0},
@@ -1335,7 +1364,7 @@ void fo_cold(void)
             read(fd, origin, norigin);
             c_type("block file ",-1);
             c_type(blkFile,-1);
-            fo_cr();
+            fo_cr(); c_flush(1);
          }
       }
       close(fd);

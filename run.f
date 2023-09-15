@@ -32,6 +32,19 @@ forth
 : :noname   here <:> , \ ] ;
 
 
+( Storage ---------------------------------------------------- )
+360 constant blk/vol
+: drive ( n)   blk/vol * offset ! ;
+: range ( a b-b b-a)   swap over - negate ;
+: i' ( limit-i)   dup R> R@ swap >R - ;
+: thru ( a b)   range for i' load next drop ;
+: index ( a b)   range for cr i' dup . block 64 type next drop ;
+variable ix  0 ix !
+: qx ( n)   dup 60 + dup ix !  index ;
+: nx   ix @ qx ;
+: bx   -120 ix @ + 0 max qx ;
+
+
 ( Double words ----------------------------------------------- )
 : 2! ( lo hi a)   swap over ! cell+ ! ;
 : 2@ ( a - lo hi)   dup cell+ @ swap @ ;

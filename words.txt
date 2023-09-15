@@ -43,7 +43,7 @@
         COUNT PLACE APPEND TYPE -TRAILING
 
 ( storage)
-        BLOCK SAVE
+        BLOCK SAVE LOAD OFFSET
         INCLUDE
 
 ( foreign-function interface)
