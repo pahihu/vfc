@@ -40,9 +40,9 @@ forth
 : thru ( a b)   range for i' load next drop ;
 : index ( a b)   range for cr i' dup . block 64 type next drop ;
 variable ix  0 ix !
-: qx ( n)   dup 60 + dup ix !  index ;
-: nx   ix @ qx ;
-: bx   -120 ix @ + 0 max qx ;
+: qx ( n)   dup 60 +  dup ix !  index ;
+: nx   ix @  qx ;
+: bx   -120 ix @ + 0 max  qx ;
 
 
 ( Double words ----------------------------------------------- )
@@ -146,3 +146,7 @@ forth
 variable diff0
 : counter ( - msec)   (get-time) 1000 * swap 1000 / + ;
 : timer ( n1)   counter swap - dup diff0 ! . ;
+
+1 function: usleep
+: ms ( n)   1000 * usleep drop ;
+

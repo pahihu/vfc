@@ -12,7 +12,7 @@
  *
  * History
  * =======
- * 230915AP added LOAD OFFSET
+ * 230915AP added LOAD OFFSET SP! RP@ RP!
  * 230914AP removed LITERAL POSTPONE [ added PAD
  *          removed address register, ." and <."> runtime
  *          removed AFT :NONAME
@@ -1028,7 +1028,10 @@ void fo_cb(void) /* : (CB) ( xt narg idx -- ptr ) */
    tabcb[idx].narg = narg;
    T = CELL(tabcb[idx].fn);
 }
-void fo_spat(void) { fo_dup(); T = CELL(S); }
+void fo_spat(void)    { fo_dup(); T = CELL(S); }
+void fo_spstore(void) { S = PCELL(T); fo_drop(); }
+void fo_rpat(void)    { fo_dup(); T = CELL(R); }
+void fo_rpstore(void) { R = PCELL(T); fo_drop(); }
 
 void c_mainloop()
 {
@@ -1064,21 +1067,20 @@ void c_mainloop()
 
 void c_include(char *path)
 {
-   FILE * volatile fin;
-   jmp_buf *savERR, errHandler;
    IODESC savIN;
+   jmp_buf *savERR, errHandler;
    volatile int err;
+   FILE * volatile fin;
    char tmp[FILENAME_MAX];
    char buf[NIOBUF+2];
 
    StrCpy(tmp,path);
 
-   err = 0;
+   savERR = errENV; errENV = &errHandler; err = 0;
    savIN = currIN;
-   savERR = errENV; errENV = &errHandler;
 
    if ((err = setjmp(errHandler))) {
-      DBG(1,fprintf(stderr,"c_include: %s\n",tmp));
+      DBG(1,fprintf(stderr,"include: %s\n",tmp));
       goto Lexit;
    }
 
@@ -1091,25 +1093,38 @@ void c_include(char *path)
 Lexit:
    if (fin)
       fclose(fin);
-   errENV = savERR;
    currIN = savIN;
+   errENV = savERR;
    if (err)
       c_throw(errENV,err);
-   return;
 }
 void fo_include(void) { c_word(BL); c_include(CHAR(STR_ADDR(cH))); }
 void fo_load(void)
 {
    IODESC savIN;
-   Cell blk;
+   jmp_buf *savERR, errHandler;
+   volatile int err;
+
+   volatile Cell blk;
+
+   savERR = errENV; errENV = &errHandler; err = 0;
+   savIN = currIN;
+
+   if ((err = setjmp(errHandler))) {
+      DBG(1,fprintf(stderr,"load: %ld\n",blk));
+      goto Lexit;
+   }
 
    blk = T; fo_drop();
-   savIN  = currIN;
    io_init(&currIN, NULL, NULL, blk);
    c_mainloop();
-   currIN = savIN;
-}
 
+Lexit:
+   currIN = savIN;
+   errENV = savERR;
+   if (err)
+      c_throw(errENV,err);
+}
 void c_init_io(void)
 {
    io_init(&currIN,  stdin,  conbufIN, 0);
@@ -1263,13 +1278,17 @@ void c_dict(void)
       {"(DLOPEN)",fo_dlopen},       /* foreign functions */
       {"(DLSYM)", fo_dlsym},
       {"(CALLC)", fo_callc},
-      {"SP@",     fo_spat},
       {"ZCOUNT",  fo_zcount},
 
       {"BLOCK",   fo_block},       /* memory block storage */
       {"SAVE",    fo_save},
       {"LOAD",    fo_load},
       {"OFFSET",  fo_offset},
+
+      {"SP@",     fo_spat},
+      {"SP!",     fo_spstore},
+      {"RP@",     fo_rpat},
+      {"RP!",     fo_rpstore},
 /* --- END --- */
 #endif
 		{NULL,		0},
