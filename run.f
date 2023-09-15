@@ -18,7 +18,7 @@ decimal
 
 
 ( Control structures ----------------------------------------- )
-: @execute ( a)   @ dup if drop execute exit then drop ;
+: @execute ( a)   @ dup if execute exit then drop ;
 
 
 ( Compiler --------------------------------------------------- )
@@ -30,7 +30,6 @@ macro
 forth
 ' compile @ constant <:>
 : :noname   here <:> , \ ] ;
-
 
 
 ( Double words ----------------------------------------------- )
