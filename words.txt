@@ -27,6 +27,7 @@
 
 ( miscellaneous)
         ( HERE PAD ABORT COLD ?MS
+        SP@ SP! RP@ RP!
 
 
 ~~~
@@ -47,7 +48,7 @@
         INCLUDE
 
 ( foreign-function interface)
-        (DLOPEN) (DLSYM) (CALLC) SP@ ZCOUNT
+        (DLOPEN) (DLSYM) (CALLC) ZCOUNT
 
 ( dictionary)
         MACRO FORTH MARK EMPTY '

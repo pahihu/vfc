@@ -23,6 +23,6 @@ variable scr
    cr ." E ( n)         clear Nth line"
    cr ." R ( n 'txt')   replace Nth line with txt"
    cr ." A ( n 'txt')   add (insert) Nth line with txt"
-   cr ." X              evaluate block"
+   cr ." X              load block"
    cr ." P              move to previous block"
    cr ." N              move to next block" ;

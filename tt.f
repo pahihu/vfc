@@ -1,5 +1,6 @@
-|s| |r| task t1  t1 construct
-|s| |r| task t2  t2 construct
+( rr-multitasker example)
+|s| |r| task t1  t1 build
+|s| |r| task t2  t2 build
 
 variable round  0 round !
 : run1   t1 activate

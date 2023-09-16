@@ -1,49 +1,58 @@
-( Round-robin multitasking)
+( round-robin multitasking)
 variable tasking
 
 2 cells constant 2cells
 3 cells constant 3cells
-: .status ( ta - a)   cell+ ;
-: .s ( ta - a)   2cells + ;
-: .s0 ( ta - a)   3cells + ;
+: tid ( -tid)   tasking @ ;     ( current task addr            )
+: follower ( -a)   tid @ ;      ( addr of following task       )
+: status (  -a)   tid cell+ ;   ( contains 'wake/'pass         )
+: s ( -a)   tid 2cells + ;      ( contains stack ptr           )
+: s0 ( -a)   tid 3cells + ;     ( contains initial stack ptr   )
 
-: .task ( ta)
+: 's ( 'tid a - a)   tid - + ;  ( access other task's variables)
+
+: .task ( ta)                   ( dump task)
    cr ."   task " dup   .h
    cr ."   link " dup @ .h
-   cr ." status " dup .status @ .h
-   cr ."      s " dup .s      @
+   cr ." status " dup status 's @ .h
+   cr ."      s " dup s      's @
    dup .h
-   if   cr ."      r " dup .s  @   @ .h
-        cr ."     xt "     .s  @ @ @ .h
+   if   cr ."      r " dup s 's  @   @ .h
+        cr ."     xt "     s 's  @ @ @ .h
    else drop
    then ;
 
-: rr   R> drop  tasking @  @  dup tasking !  .status @ >R ;
+( round-robin scheduler----------------------------------------)
+( get next tasks address, makes current and jumps to the addr  )
+( in status)
+: rr   R> drop  follower  tasking !  status @ >R ;
 
-: asleep   rr ;
-' asleep cell+ constant 'asleep
-: sleep ( ta-ta)   'asleep  over .status ! ;
-: awake  tasking @  sleep  .s @  sp! rp! r> drop ;
+: pass   rr ;                                      ( do nothing)
+' pass cell+ constant 'pass         ( addr of pass' thread list)
+: sleep ( tid)   status 's  'pass swap !  ;    ( put task sleep)
+: wake ( - )   tid sleep  s @  sp! rp! r> drop ; ( wake task   )
 
-' awake cell+ constant 'awake
-: wake ( ta-ta)   'awake over .status ! ;
-: stop   0 >R rp@  sp@  tasking @ .s !  rr ;
-: pause  tasking @ wake drop  stop ;
+' wake cell+ constant 'wake         ( addr of wake' thread list)
+: awake ( tid)   status 's  'wake swap ! ;      ( awaken a task)
+: stop ( - )   0 >R rp@  sp@  s !  rr ;         ( stop task    )
+: pause ( - )   tid awake  stop ;               ( switch tasks )
 
-256 constant |S|
-256 constant |R|
+256 constant |S|                      ( default data stack size)
+256 constant |R|                    ( default return stack size)
 
-: alloc ( n-a)   cells allot here ;
-: task ( #s #r 'name' - ta)
+: alloc ( n-a)   cells allot here ;   ( allot stack, grows down)
+: task ( #s #r 'name' - tid)                      ( create task)
    alloc cell- >R  alloc cell- R> ( 's 'r)  over !
    create ( link) 0 , ( status) 0 , ( s s0) dup , , ;
 
-: construct ( ta)   sleep
-   tasking @ @  over !  dup tasking @ !  tasking ! ;
-: /task ( ta)   dup .s0 @  swap .s ! ;
-: activate ( ta)
-   dup /task  wake  .s @ @ ( rp) R> swap !  ( rr) ;
-: halt ( ta)   activate stop ;
+: build ( tid)   dup sleep                          ( init task)
+   follower  over !  dup tid !  tasking ! ;
+: /task ( tid)   dup s0 's @  swap s 's ! ;     ( reset s to s0)
+: activate ( tid)                                  ( start task)
+   dup /task  dup awake  s 's @ @ ( rp) R> swap !  ( rr) ;
+: halt ( tid)   activate stop ;                     ( halt task) 
 
-create operator  operator , 'asleep , 0 ,
+( initial task: operator)
+create operator  operator , 'pass , 0 ,
 operator tasking !
+
