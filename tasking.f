@@ -56,3 +56,27 @@ variable tasking
 create operator  operator , 'pass , 0 ,
 operator tasking !
 
+
+( FORTH, Inc. like facility variables)
+: free ( a - a t)   @ dup 0=  swap                   ( either 0)
+   status =  or ;                    ( or owned by current task)
+: get ( a)   begin  pause  free until         ( wait until free)
+   status swap ! ;                ( store current task's status)
+: release ( a)   free  if  0 swap !  else
+   drop  then ;
+
+( B.Rodriguez multitasking)
+: wait ( a)   begin  pause  dup @  until   ( wait for available)
+   0 swap ! ;
+: signal ( a)   1 swap ! ;                  ( make it available)
+
+variable sender  variable message    ( should be user variables)
+: send ( msg to)
+   tid  over sender 's                   ( msg to me SENDERaddr)
+   begin  pause  dup @ 0=  until
+   !  message 's ! ;
+
+: receive ( -- msg from)
+   begin  pause sender @  until    ( wait for a msg from anyone)
+   message @  sender @                ( get msg and sender task)
+   0 sender ! ;                         ( ready for another msg)
