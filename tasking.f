@@ -3,15 +3,15 @@ variable tasking
 
 2 cells constant 2cells
 3 cells constant 3cells
-: tid ( -tid)   tasking @ ;     ( current task addr            )
-: follower ( -a)   tid @ ;      ( addr of following task       )
-: status (  -a)   tid cell+ ;   ( contains 'wake/'pass         )
-: s ( -a)   tid 2cells + ;      ( contains stack ptr           )
-: s0 ( -a)   tid 3cells + ;     ( contains initial stack ptr   )
+: tid ( -tid)   tasking @ ;                 ( current task addr)
+: follower ( -a)   tid @ ;             ( addr of following task)
+: status (  -a)   tid cell+ ;            ( contains 'wake/'pass)
+: s ( -a)   tid 2cells + ;                 ( contains stack ptr)
+: s0 ( -a)   tid 3cells + ;        ( contains initial stack ptr)
 
 : 's ( 'tid a - a)   tid - + ;  ( access other task's variables)
 
-: .task ( ta)                   ( dump task)
+: .task ( ta)                                       ( dump task)
    cr ."   task " dup   .h
    cr ."   link " dup @ .h
    cr ." status " dup status 's @ .h
@@ -30,12 +30,12 @@ variable tasking
 : pass   rr ;                                      ( do nothing)
 ' pass cell+ constant 'pass         ( addr of pass' thread list)
 : sleep ( tid)   status 's  'pass swap !  ;    ( put task sleep)
-: wake ( - )   tid sleep  s @  sp! rp! r> drop ; ( wake task   )
+: wake ( - )   tid sleep  s @  sp! rp! r> drop ;    ( wake task)
 
 ' wake cell+ constant 'wake         ( addr of wake' thread list)
 : awake ( tid)   status 's  'wake swap ! ;      ( awaken a task)
-: stop ( - )   0 >R rp@  sp@  s !  rr ;         ( stop task    )
-: pause ( - )   tid awake  stop ;               ( switch tasks )
+: stop ( - )   0 >R rp@  sp@  s !  rr ;             ( stop task)
+: pause ( - )   tid awake  stop ;               ( switch tasks)
 
 256 constant |S|                      ( default data stack size)
 256 constant |R|                    ( default return stack size)
