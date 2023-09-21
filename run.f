@@ -57,6 +57,12 @@ variable ix  0 ix !
 : nx   ix @  qx ;
 : bx   -120 ix @ + 0 max  qx ;
 
+( Virtual storage -------------------------------------------- )
+1440 constant /block
+: va ( va-a)   1024 /mod  /block mod  block + ;
+: v@ ( va-n)   va @ ;
+: v! ( n va)   va ! ;
+
 
 ( Double words ----------------------------------------------- )
 : 2! ( lo hi a)   swap over ! cell+ ! ;
