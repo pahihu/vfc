@@ -382,8 +382,7 @@ void fo_swap(void)	{ Cell tmp = T; T = N; N = tmp; }
 void fo_over(void)	{ Cell tmp = N; fo_dup(); T = tmp; }
 
 void fo_up(void)     { fo_dup(); T = CELL(&UP); }
-void fo_base(void)   { fo_dup(); T = CELL(&BASE); }
-void fo_offset(void) { fo_dup(); T = CELL(&OFFSET); }
+void fo_ctx(void)    { fo_dup(); T = CELL(&CTX); }
 
 /* memory */
 void fo_cfetch(void) { T = *BYTE(T); }
@@ -1186,13 +1185,13 @@ void c_dict(void)
 	int i;
    DICT *d;
 	dict_entry_t words[] = {
-		{"<LIT>",	fo_dolit},     /* runtime */
-		{"0BRANCH", fo_0branch},
-		{"BRANCH",  fo_branch},
-		{"<NEXT>",  fo_donext},
-      {"<C\">",   fo_docstr},
-		{">R",      fo_tor},
-		{"EXIT",    fo_exit},
+		{"<lit>",	fo_dolit},     /* runtime */
+		{"0branch", fo_0branch},
+		{"branch",  fo_branch},
+		{"<next>",  fo_donext},
+      {"<c\">",   fo_docstr},
+		{">r",      fo_tor},
+		{"exit",    fo_exit},
 
 		{"@",       fo_fetch},     /* memory */
 		{"!",       fo_store},
@@ -1201,133 +1200,134 @@ void c_dict(void)
 		{"-",		   fo_sub},
 		{"*",		   fo_mul},
 		{"/",		   fo_div},
-		{"MOD",		fo_mod},
+		{"mod",		fo_mod},
       {"*/",      fo_muldiv},
-		{"ABS",     fo_abs},
-		{"NEGATE",  fo_negate},
-		{"MIN",     fo_min},
-		{"MAX",     fo_max},
+		{"abs",     fo_abs},
+		{"negate",  fo_negate},
+		{"min",     fo_min},
+		{"max",     fo_max},
 
 		{"<",       fo_less},      /* logic */
 		{"=",       fo_equal},
 		{">",       fo_greater},
-		{"AND",     fo_and},
-		{"OR",      fo_or},
-		{"XOR",     fo_xor},
-      {"INVERT",  fo_invert},
-      {"NOT",     fo_zequal},
+		{"and",     fo_and},
+		{"or",      fo_or},
+		{"xor",     fo_xor},
+      {"invert",  fo_invert},
+      {"not",     fo_zequal},
 
-		{"DROP",    fo_drop},      /* stack */
-		{"DUP",     fo_dup},
-		{"SWAP",    fo_swap},
-		{"OVER",    fo_over},
+		{"drop",    fo_drop},      /* stack */
+		{"dup",     fo_dup},
+		{"swap",    fo_swap},
+		{"over",    fo_over},
 
       {".",       fo_dot},       /* io */
-      {".R",      fo_dotr},
-		{"EMIT",	   fo_emit},
-		{"KEY",		fo_key},
-		{"CR",      fo_cr},
-      {"HEX",     fo_hex},
-      {"DECIMAL", fo_decimal},
+      {".r",      fo_dotr},
+		{"emit",	   fo_emit},
+		{"key",		fo_key},
+		{"cr",      fo_cr},
+      {"hex",     fo_hex},
+      {"decimal", fo_decimal},
 
 		{":",		   fo_colon},     /* defining */
-		{"VARIABLE",fo_variable},
-		{"CREATE",  fo_create},
-		{"ALLOT",   fo_allot},
+		{"variable",fo_variable},
+		{"create",  fo_create},
+		{"allot",   fo_allot},
 		{",",       fo_comma},
 
-      {"I",       fo_rfetch},    /* control */
-		{"EMPTY",   fo_empty},
+      {"i",       fo_rfetch},    /* control */
+		{"empty",   fo_empty},
 
       {"(",       fo_paren},
 
-		{"BYE",     fo_bye},
+		{"bye",     fo_bye},
 
 #ifndef MOORE_INTRO
 		{"'",	      fo_tick},
-		{"EXECUTE", fo_execute},
+		{"execute", fo_execute},
 
-		{"R>",      fo_rfrom},     /* stack */
-		{"R@",	   fo_rfetch},
-		{"C@",      fo_cfetch},    /* memory */
-		{"C!",      fo_cstore},
+		{"r>",      fo_rfrom},     /* stack */
+		{"r@",	   fo_rfetch},
+		{"c@",      fo_cfetch},    /* memory */
+		{"c!",      fo_cstore},
 
       {"0=",      fo_zequal},
 
-		{"CONSTANT",fo_constant},
-		{"/MOD",    fo_divmod},    /* Moore arithmetic */
+		{"constant",fo_constant},
+		{"/mod",    fo_divmod},    /* Moore arithmetic */
 
 /* --- START --- */
-		{"MARK",    fo_mark},
-		{"MACRO",   fo_macro},
-		{"FORTH",   fo_forth},
+		{"mark",    fo_mark},
+		{"macro",   fo_macro},
+		{"forth",   fo_forth},
 
-      {"HERE",    fo_here},
-      {"PAD",     fo_pad},
+      {"here",    fo_here},
+      {"pad",     fo_pad},
       {"+!",      fo_plusstore},
-      {"SPACE",   fo_space},
-      {"SPACES",  fo_spaces},
+      {"space",   fo_space},
+      {"spaces",  fo_spaces},
 
-		{"?MS",     fo_qms},       /* extensions */
-		{"WORD",    fo_word},
-      {"INCLUDE", fo_include},
-      {"MOVE",    fo_move},
-      {"FILL",    fo_fill},
-      {"ABORT",   fo_abort},
-      {"COLD",    fo_cold},
+		{"?ms",     fo_qms},       /* extensions */
+		{"word",    fo_word},
+      {"include", fo_include},
+      {"move",    fo_move},
+      {"fill",    fo_fill},
+      {"abort",   fo_abort},
+      {"cold",    fo_cold},
 
-		{"DOES>",	fo_does},
+		{"does>",	fo_does},
 
-      {"CELL",    fo_cell},
-      {"CELLS",   fo_cells},
-      {"CELL+",   fo_cellplus},
+      {"cell",    fo_cell},
+      {"cells",   fo_cells},
+      {"cell+",   fo_cellplus},
 
       {"1+",      fo_1plus},
       {"1-",      fo_1sub},
       {"2*",      fo_2star},
       {"2/",      fo_2slash},
 
-      {"TYPE",    fo_type},         /* strings */
-      {"COUNT",   fo_count},
-      {"PLACE",   fo_place},
-      {"APPEND",  fo_append},
-      {"-TRAILING", fo_subtrailing},
+      {"type",    fo_type},         /* strings */
+      {"count",   fo_count},
+      {"place",   fo_place},
+      {"append",  fo_append},
+      {"-trailing", fo_subtrailing},
 
-      {"(DLOPEN)",fo_dlopen},       /* foreign functions */
-      {"(DLSYM)", fo_dlsym},
-      {"(CALLC)", fo_callc},
-      {"ZCOUNT",  fo_zcount},
+      {"(dlopen)",fo_dlopen},       /* foreign functions */
+      {"(dlsym)", fo_dlsym},
+      {"(callc)", fo_callc},
+      {"zcount",  fo_zcount},
 
-      {"BLOCK",   fo_block},       /* memory block storage */
-      {"SAVE",    fo_save},
-      {"LOAD",    fo_load},
+      {"block",   fo_block},       /* memory block storage */
+      {"save",    fo_save},
+      {"load",    fo_load},
 
-      {"USER",    fo_user},        /* tasking */
-      {"UP",      fo_up},
-      {"SP@",     fo_spat},
-      {"SP!",     fo_spstore},
-      {"RP@",     fo_rpat},
-      {"RP!",     fo_rpstore},
+      {"user",    fo_user},        /* tasking */
+      {"up",      fo_up},
+      {"sp@",     fo_spat},
+      {"sp!",     fo_spstore},
+      {"rp@",     fo_rpat},
+      {"rp!",     fo_rpstore},
+      {"ctx",     fo_ctx},         /* dictionary context */
 /* --- END --- */
 #endif
 		{NULL,		0},
 	};
 	dict_entry_t macros[] = {
-		{"IF",		fo_if},           /* control */
-		{"ELSE",	   fo_else},
-		{"THEN",	   fo_then},
-		{"FOR",     fo_for},
-		{"NEXT",    fo_next},
+		{"if",		fo_if},           /* control */
+		{"else",	   fo_else},
+		{"then",	   fo_then},
+		{"for",     fo_for},
+		{"next",    fo_next},
       {"(",       fo_paren},
 		{";",		   fo_semi},         /* defining */
 
 #ifndef MOORE_INTRO
-		{"BEGIN",	fo_begin},
-		{"WHILE",	fo_while},
-		{"REPEAT",	fo_repeat},
-		{"UNTIL",	fo_until},
+		{"begin",	fo_begin},
+		{"while",	fo_while},
+		{"repeat",	fo_repeat},
+		{"until",	fo_until},
 
-      {"C\"",     fo_cstr},
+      {"c\"",     fo_cstr},
       {"]",       fo_rbracket},
 #endif
 		{NULL,		0},

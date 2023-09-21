@@ -90,6 +90,11 @@ forth
 
 
 ( Debug ------------------------------------------------------ )
+: .id ( a)   @ zcount type ;
+: words   ctx @ @
+   begin  dup
+   while  dup .id space  cell+ @
+   repeat  drop ;
 : .h ( n)   base @ >R     hex . R> base ! ;
 : .d ( n)   base @ >R decimal . R> base ! ;
 : .line ( a - a')   7 for dup c@ 255 and space 3 .r 1+ next ;
