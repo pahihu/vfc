@@ -12,6 +12,7 @@
  *
  * History
  * =======
+ * 230921AP added UP USER, removed BASE OFFSET
  * 230915AP added LOAD OFFSET SP! RP@ RP!
  * 230914AP removed LITERAL POSTPONE [ added PAD
  *          removed address register, ." and <."> runtime
@@ -78,6 +79,7 @@ typedef unsigned char Byte;
 Cell *M = 0;         /* memory */
 Cell *P,*W;			   /* indirect-threaded code IP, W */
 Cell *S,T,I,*R;		/* data stack ptr, top, rtop, return stack ptr */
+Cell *UP;            /* user area */
 
 #define N   *S
 
@@ -91,8 +93,15 @@ typedef struct Dict {
 Cell memSize;
 const char *blkFile;
 Cell *S0, *R0;
-Cell BASE = 10;      /* number base */
-Cell OFFSET = 0;     /* block offset */
+/* User variables: LINK STATUS TOS TOS0 BASE OFFSET */
+
+#define LINK   UP[0]
+#define STATUS UP[1]
+#define TOS    UP[2]
+#define TOS0   UP[3]
+#define BASE   UP[4]
+#define OFFSET UP[5]
+
 void (*staFn)(Byte*);
 DICT **CTX;			   /* current vocabulary ptr */
 DICT *dFORTH,*dMACRO;/* FORTH dict, MACRO dict */
@@ -120,9 +129,10 @@ void c_compiler(Byte*);
 void c_interpreter(Byte*);
 void fo_docol(void);
 void fo_docon(void);
+void fo_douser(void);   /* USER     */
 void fo_dovar(void);	   /* VARIABLE */
-void fo_docre(void);    /* CREATE */
-void fo_dodoes(void);   /* DOES> */
+void fo_docre(void);    /* CREATE   */
+void fo_dodoes(void);   /* DOES>    */
 void fo_exit(void);
 void _abort(void);
 void fo_abort(void);
@@ -371,6 +381,7 @@ void fo_rfetch(void) { fo_dup(); T = I; }
 void fo_swap(void)	{ Cell tmp = T; T = N; N = tmp; }
 void fo_over(void)	{ Cell tmp = N; fo_dup(); T = tmp; }
 
+void fo_up(void)     { fo_dup(); T = CELL(&UP); }
 void fo_base(void)   { fo_dup(); T = CELL(&BASE); }
 void fo_offset(void) { fo_dup(); T = CELL(&OFFSET); }
 
@@ -652,6 +663,13 @@ void fo_constant(void)
    d->pfa = T; H++;
 	fo_drop();
 }
+void fo_user(void)
+{
+	DICT *d = fo_header();
+   d->cfa = fo_douser;
+   d->pfa = T; H++;
+	fo_drop();
+}
 void fo_create(void) { DICT *d = fo_header(); d->cfa = fo_docre; d->pfa = 0; H++; }
 void fo_does(void)
 {
@@ -666,6 +684,7 @@ void fo_variable(void) { DICT *d = fo_header(); d->cfa = fo_dovar; d->pfa = 0; H
 /* inner interpreter */
 void fo_docol(void) 	{ *--R = I; I = CELL(P); P = W; }
 void fo_exit(void) 	{ P = PCELL(I); I = *R++; }
+void fo_douser(void) { fo_dup(); T = CELL((Byte*)UP + (*W)); }
 void fo_docon(void) 	{ fo_dup(); T = *W; }
 void fo_dovar(void) 	{ fo_dup(); T = CELL(W); }
 void fo_docre(void)  { fo_dup(); T = CELL(W+1); }
@@ -1225,7 +1244,6 @@ void c_dict(void)
 		{"BYE",     fo_bye},
 
 #ifndef MOORE_INTRO
-      {"BASE",    fo_base},
 		{"'",	      fo_tick},
 		{"EXECUTE", fo_execute},
 
@@ -1283,8 +1301,9 @@ void c_dict(void)
       {"BLOCK",   fo_block},       /* memory block storage */
       {"SAVE",    fo_save},
       {"LOAD",    fo_load},
-      {"OFFSET",  fo_offset},
 
+      {"USER",    fo_user},        /* tasking */
+      {"UP",      fo_up},
       {"SP@",     fo_spat},
       {"SP!",     fo_spstore},
       {"RP@",     fo_rpat},
@@ -1358,8 +1377,12 @@ void fo_cold(void)
 	S0 = M + memSize - DSTACK_SIZE;
 	R0 = S0 - RSTACK_SIZE;
 	H  = M + 0x100;
+   UP = M;
 	dFORTH = 0;
 	dMACRO = 0;
+
+   BASE   = 10;
+   OFFSET = 0;
 
 	c_dict();
 	xt_exit    = CELL(c_find(dFORTH,BYTE("EXIT")));

@@ -1,6 +1,19 @@
 decimal
 32 constant bl
 
+( User variables --------------------------------------------- )
+
+variable #user  0 #user !
+: +user ( o1 n 'name' - o2)   over user + ;
+
+0
+cell +user link
+cell +user status
+cell +user tos
+cell +user tos0
+cell +user base
+cell +user offset
+#user !
 
 ( Arithmetic ------------------------------------------------- )
 : cell/ ( n1 - n2)   cell / ;
@@ -71,7 +84,8 @@ forth
 
 
 ( Debug ------------------------------------------------------ )
-: .h  base @ >R hex . R> base ! ;
+: .h ( n)   base @ >R     hex . R> base ! ;
+: .d ( n)   base @ >R decimal . R> base ! ;
 : .line ( a - a')   7 for dup c@ 255 and space 3 .r 1+ next ;
 : dump ( a n)
    15 + 16 / for
