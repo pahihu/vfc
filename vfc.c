@@ -12,6 +12,7 @@
  *
  * History
  * =======
+ * 230922AP added /BLOCK
  * 230921AP added UP USER, removed BASE OFFSET
  * 230915AP added LOAD OFFSET SP! RP@ RP!
  * 230914AP removed LITERAL POSTPONE [ added PAD
@@ -115,6 +116,7 @@ void *sobj[MAX_SOBJ];/* shared objects */
 Cell nsobj = 0;
 void *origin = 0;
 size_t norigin;
+Cell nblk;
 int dbg=0;
 
 Cell xt_dolit,xt_0branch, xt_branch;
@@ -470,7 +472,7 @@ void fo_subtrailing(void)
    Cell n = T;
    char *w = CHAR(N);
 
-   while (n && c_isdelim(BL, w[n]))
+   while (n && c_isdelim(BL, w[n-1]))
       n--;
    T = n;
 }
@@ -1151,9 +1153,13 @@ void c_init_io(void)
 
 char* c_block(Cell blk)
 {
-   return origin? CHAR(origin) + 1024 * (blk + OFFSET) : 0;
+   return origin? CHAR(origin) + 1024 * ((blk + OFFSET) % nblk) : 0;
 }
 
+void fo_nblock(void)
+{
+   fo_dup(); T = CELL(nblk);
+}
 void fo_block(void)
 {
    T = CELL(c_block(T));
@@ -1300,6 +1306,7 @@ void c_dict(void)
       {"block",   fo_block},       /* memory block storage */
       {"save",    fo_save},
       {"load",    fo_load},
+      {"/block",  fo_nblock},
 
       {"user",    fo_user},        /* tasking */
       {"up",      fo_up},
@@ -1402,6 +1409,7 @@ void fo_cold(void)
       off_t offs = lseek(fd, 0, SEEK_END);
       if (-1 != offs) {
          if ((origin = malloc(norigin = offs))) {
+            nblk = norigin / 1024;
             lseek(fd, 0, SEEK_SET);
             read(fd, origin, norigin);
             c_type("block file ",-1);

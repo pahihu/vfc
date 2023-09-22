@@ -1,4 +1,4 @@
-: fib ( n - m)   dup 2 < if exit then 1- dup fib swap 1- fib + ;
+: fib ( n-m)   dup 2 < if exit then 1- dup fib swap 1- fib + ;
 : inner ( n)   for next ;
 : outer ( n)   dup for  dup inner  next drop ;
 
