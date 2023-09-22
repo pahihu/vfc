@@ -101,7 +101,7 @@ forth
 
 ( Debug ------------------------------------------------------ )
 : .id ( a)   @ zcount type ;
-: words   ctx @ @
+: words   current @ @
    begin  dup
    while  dup .id space  cell+ @
    repeat  drop ;

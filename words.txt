@@ -1,55 +1,15 @@
-( run-time)
-        <LIT> 0BRANCH BRANCH <NEXT> <C">
+( forth 99 words)
+current rp! rp@ sp! sp@ up user /block load save
+block zcount (callc) (dlsym) (dlopen) -trailing append place count type
+2/ 2* 1- 1+ cell+ cells cell does> cold abort
+fill move include word ?ms spaces space +! pad here
+forth macro mark /mod constant 0= c! c@ r@ r>
+execute ' bye ( empty i , allot create variable
+: decimal hex cr key emit .r . over swap
+dup drop not invert xor or and > = <
+max min negate abs */ mod / * - +
+! @ exit >r <c"> <next> branch 0branch <lit>
 
-( comparison)
-        < = > 0= NOT
-
-( arithmetic and logical)
-        1+ 1- 2* 2/
-        CELL CELLS CELL+
-        + - * / MOD /MOD */ ABS NEGATE MIN MAX
-        AND OR XOR INVERT
-
-( control structures)
-        IF ELSE THEN 
-        FOR I NEXT
-        BEGIN WHILE REPEAT UNTIL
-        EXIT EXECUTE
-
-( numeric conversion)
-        BASE DECIMAL HEX . .R
-
-( defining)
-        : ; VARIABLE CONSTANT CREATE DOES>
-
-( compiler)
-        , ALLOT C" ]
-
-( miscellaneous)
-        ( HERE PAD ABORT COLD ?MS
-        SP@ SP! RP@ RP!
-
-
-~~~
-( stack)
-        DROP DUP SWAP OVER >R R@ R>
-
-( memory)
-        @ ! +! C@ C! MOVE FILL
-
-( terminal)
-        CR SPACE SPACES EMIT KEY WORD
-
-( strings)
-        COUNT PLACE APPEND TYPE -TRAILING
-
-( storage)
-        BLOCK SAVE LOAD OFFSET
-        INCLUDE
-
-( foreign-function interface)
-        (DLOPEN) (DLSYM) (CALLC) ZCOUNT
-
-( dictionary)
-        MACRO FORTH MARK EMPTY '
-
+( macro 13 words)
+] c" until repeat while begin ; ( next for
+then else if
