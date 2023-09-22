@@ -12,7 +12,7 @@
  *
  * History
  * =======
- * 230922AP added /BLOCK
+ * 230922AP added /BLOCK, added reDef msg
  * 230921AP added UP USER, removed BASE OFFSET
  * 230915AP added LOAD OFFSET SP! RP@ RP!
  * 230914AP removed LITERAL POSTPONE [ added PAD
@@ -618,24 +618,6 @@ void fo_fill(void)
  * CFA	cell
  * PFA
 */
-DICT* c_header(const Byte *w)
-{
-	DICT *d = (DICT*)H;
-
-   d->nfa = w; d->lfa = *CTX; *CTX = d;
-   H += 3;
-   return d;
-}
-
-DICT* fo_header(void)
-{
-   Byte *w;
-
-   c_word(BL); w = STR_ADDR(cH);
-   c_align(STRlen(H));
-   return c_header(w);
-}
-
 Cell* c_find(DICT *dict,Byte *s)
 {
 	DICT *p;
@@ -650,6 +632,26 @@ Cell* c_find(DICT *dict,Byte *s)
 		xt = PCELL(&(p->cfa));
    DBG(10,fprintf(stderr, " xt=%p\n",xt));
 	return xt;
+}
+DICT* c_header(const Byte *w)
+{
+	DICT *d = (DICT*)H;
+
+   d->nfa = w; d->lfa = *CTX; *CTX = d;
+   H += 3;
+   return d;
+}
+DICT* fo_header(void)
+{
+   Byte *w;
+
+   c_word(BL); w = STR_ADDR(cH);
+   if (c_find(*CTX,w)) {
+      c_type("reDef ",-1);
+      c_type(CHAR(w), -1);
+   }
+   c_align(STRlen(H));
+   return c_header(w);
 }
 
 void fo_lbracket(void) { staFn = c_interpreter; }

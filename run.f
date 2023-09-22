@@ -107,10 +107,10 @@ forth
    repeat  drop ;
 : .h ( n)   base @ >R     hex . R> base ! ;
 : .d ( n)   base @ >R decimal . R> base ! ;
-: .line ( a-a')   7 for dup c@ 255 and space 3 .r 1+ next ;
+: .8 ( a-a')   7 for dup c@ 255 and space 3 .r 1+ next ;
 : dump ( a n)
    15 + 16 / for
-      cr  dup 8 .r  .line 3 spaces .line
+      cr  dup 8 .r  .8 3 spaces .8
    next  drop ;
 : ? ( a)   @ . ;
 
