@@ -41,7 +41,6 @@ cell +user offset
 : compile   R> dup @ , cell+ >R ;
 : lit ( x)   compile <lit> , ;
 macro
-: \ ( 'name')   ' , ;
 : aft ( a-a A)   drop compile branch here 0 , here swap ;
 forth
 ' compile @ constant <:>
@@ -101,7 +100,7 @@ forth
 
 ( Debug ------------------------------------------------------ )
 : .id ( a)   @ zcount type ;
-: words   current @ @
+: words   context @ @
    begin  dup
    while  dup .id space  cell+ @
    repeat  drop ;

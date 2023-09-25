@@ -6,12 +6,15 @@
  * NFA
  *
  * NFA points to the beginning of the zero terminated name.
- * CURRENT is a pointer to a dictionary link cell, which contains
+ * CONTEXT is a pointer to a dictionary link cell, which contains
  * the last NFA. <name> is extended to cell boundary.
  *
  *
  * History
  * =======
+ * 230925AP added \, it searches only the MACRO dictionary
+ *          changed ', it searches the current dictionary
+ *          renamed CURRENT to CONTEXT
  * 230922AP added /BLOCK, added reDef msg, renamed CTX to CURRENT
  * 230921AP added UP USER, removed BASE OFFSET
  * 230915AP added LOAD OFFSET SP! RP@ RP!
@@ -104,7 +107,7 @@ Cell *S0, *R0;
 #define OFFSET UP[5]
 
 void (*staFn)(Byte*);
-DICT **CURRENT;	   /* current vocabulary ptr */
+DICT **CONTEXT;	   /* current vocabulary ptr */
 DICT *dFORTH,*dMACRO;/* FORTH dict, MACRO dict */
 Cell *H;			      /* dictionary ptr */
 #define cH           (BYTE(H))
@@ -384,7 +387,7 @@ void fo_swap(void)	{ Cell tmp = T; T = N; N = tmp; }
 void fo_over(void)	{ Cell tmp = N; fo_dup(); T = tmp; }
 
 void fo_up(void)     { fo_dup(); T = CELL(&UP); }
-void fo_current(void){ fo_dup(); T = CELL(&CURRENT); }
+void fo_context(void){ fo_dup(); T = CELL(&CONTEXT); }
 
 /* memory */
 void fo_cfetch(void) { T = *BYTE(T); }
@@ -637,7 +640,7 @@ DICT* c_header(const Byte *w)
 {
 	DICT *d = (DICT*)H;
 
-   d->nfa = w; d->lfa = *CURRENT; *CURRENT = d;
+   d->nfa = w; d->lfa = *CONTEXT; *CONTEXT = d;
    H += 3;
    return d;
 }
@@ -646,7 +649,7 @@ DICT* fo_header(void)
    Byte *w;
 
    c_word(BL); w = STR_ADDR(cH);
-   if (c_find(*CURRENT,w)) {
+   if (c_find(*CONTEXT,w)) {
       c_type("reDef ",-1);
       c_type(CHAR(w), -1);
    }
@@ -676,7 +679,7 @@ void fo_user(void)
 void fo_create(void) { DICT *d = fo_header(); d->cfa = fo_docre; d->pfa = 0; H++; }
 void fo_does(void)
 {
-   DICT *last = *CURRENT;
+   DICT *last = *CONTEXT;
 
    last->cfa = fo_dodoes;
    last->pfa = CELL(P);
@@ -847,8 +850,8 @@ void fo_cstr(void)
    c_comma(xt_docstr);
    c_commastr();
 }
-void fo_macro(void) { CURRENT = &dMACRO; }
-void fo_forth(void) { CURRENT = &dFORTH; }
+void fo_macro(void) { CONTEXT = &dMACRO; }
+void fo_forth(void) { CONTEXT = &dFORTH; }
 void fo_mark(void)
 {
     mark[0] = H;
@@ -913,21 +916,25 @@ void c_compiler(Byte *w)
       fo_literal();
 	}
 }
-
-void fo_tick(void)
+void c_tick(DICT *d)
 {
    Byte *w;
    Cell *xt;
 
    c_word(BL); w = STR_ADDR(cH);
-	xt = c_find(dMACRO, w);
-	if (!xt) {
-      xt = c_find(dFORTH, w);
-   }
-   if (!xt) {
+	xt = c_find(d, w);
+   if (!xt)
       c_doabort("undefined",-4);
-   }
    fo_dup(); T = CELL(xt);
+}
+void fo_tick(void)
+{
+   c_tick(*CONTEXT);
+}
+void fo_bkslash(void)
+{
+   c_tick(dMACRO);
+   fo_comma();
 }
 void fo_dlopen(void) /* : (dlopen) ( sa -- ) */
 {
@@ -1316,7 +1323,7 @@ void c_dict(void)
       {"sp!",     fo_spstore},
       {"rp@",     fo_rpat},
       {"rp!",     fo_rpstore},
-      {"current", fo_current},     /* current dictionary */
+      {"context", fo_context},     /* context dictionary */
 /* --- END --- */
 #endif
 		{NULL,		0},
@@ -1338,16 +1345,17 @@ void c_dict(void)
 
       {"c\"",     fo_cstr},
       {"]",       fo_rbracket},
+      {"\\",      fo_bkslash},
 #endif
 		{NULL,		0},
 	};
 
-	CURRENT = &dMACRO;
+	CONTEXT = &dMACRO;
 	for (i = 0; macros[i].nm; i++) {
 		d = c_header(BYTE(macros[i].nm));
       d->cfa = macros[i].fn;
 	}
-	CURRENT = &dFORTH;
+	CONTEXT = &dFORTH;
 	for (i = 0; words[i].nm; i++) {
 		d = c_header(BYTE(words[i].nm));
       d->cfa = words[i].fn;
@@ -1367,7 +1375,7 @@ void _abort(void)
       I = 0xDEADBEEF;
 	BASE  = 10;
    fo_lbracket();
-	CURRENT = &dFORTH;
+	CONTEXT = &dFORTH;
 
 	c_init_io();
 }
