@@ -1,5 +1,5 @@
 ( forth 99 words)
-current rp! rp@ sp! sp@ up user /block load save
+context rp! rp@ sp! sp@ up user /block load save
 block zcount (callc) (dlsym) (dlopen) -trailing append place count type
 2/ 2* 1- 1+ cell+ cells cell does> cold abort
 fill move include word ?ms spaces space +! pad here
