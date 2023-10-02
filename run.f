@@ -178,9 +178,13 @@ forth
 : (get-time) ( -usec sec)   0 0 sp@ 0 swap gettimeofday drop ;
 
 variable diff0
+: >diff0 ( end start)   - dup diff0 ! . ;
 : counter ( -msec)   (get-time) 1000 * swap 1000 / + ;
-: timer ( n1)   counter swap - dup diff0 ! . ;
+: timer ( n1)   counter swap >diff0 ;
 
 1 function: usleep
 : ms ( n)   1000 * usleep drop ;
+
+: timer-reset   counter diff0 ! ;
+: .elapsed   counter diff0 @ >diff0 ;
 
