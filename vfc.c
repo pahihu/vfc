@@ -99,6 +99,7 @@ const char *blkFile;
 Cell *S0, *R0;
 /* User variables: LINK STATUS TOS TOS0 BASE OFFSET */
 
+Cell dummyUP[6];
 #define LINK   UP[0]
 #define STATUS UP[1]
 #define TOS    UP[2]
@@ -305,6 +306,7 @@ void c_flush(int force)
    if (force || (NIOBUF == noutbuf)) {
       outbuf[noutbuf] = '\0';
       FPutS(&outbuf[0], devOUT);
+      if (dbg) fflush(devOUT);
       noutbuf = 0;
    }
 }
@@ -314,7 +316,7 @@ void c_emit(int ch)
    if (ioinput)
       noutbuf = 0;
    ioinput = 0;
-   c_flush(0);
+   c_flush(dbg);
    outbuf[noutbuf++] = ch;
 }
 
@@ -463,9 +465,9 @@ void fo_append(void)
    Byte *from, *to;
    Cell n, oldn;
 
-   to   = BYTE(T); fo_drop();
-   n    = T;       fo_drop();
-   from = BYTE(T); fo_drop();
+   to   = BYTE(T);    fo_drop();
+   n    = T;          fo_drop();
+   from = BYTE(T);    fo_drop();
    oldn = STR_CNT(to); STR_CNT(to) += n;
    to = STR_ADDR(to);
    MemMove(to + oldn, from, n);
@@ -1450,6 +1452,7 @@ int main(int argc, char *argv[])
 	}
    memSize = 256*1024;
    blkFile = "fo.blk";
+   UP = dummyUP; BASE = 10;
    for (i = 1; i < argc; i++) {
       str = argv[i];
       if ('-' == *str) {
