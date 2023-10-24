@@ -21,3 +21,5 @@
    0 until ;
 
 : run   run1 run2 rr ;
+
+run
