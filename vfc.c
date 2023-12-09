@@ -13,7 +13,7 @@
  * History
  * =======
  * 231209AP added UPDATE, block cache (-c option sets the size)
- *          fixed ] added [
+ *          fixed ] added [, flush output on exit
  * 230925AP added \, it searches only the MACRO dictionary
  *          changed ', it searches the current dictionary
  *          renamed CURRENT to CONTEXT
@@ -156,6 +156,7 @@ void fo_abort(void);
 void fo_cold(void);
 void fo_save(void);
 char* c_block(Cell blk);
+void c_flush(int force);
 
 #ifdef NDEBUG
 #define DBG(lvl,stmt)
@@ -252,6 +253,7 @@ int FPutS(const char *s, FILE *stream)
 
 void xexit(int code)
 {
+   c_flush(1);
    if (origin) {
       free(origin);
       close(fdBLK);
@@ -355,7 +357,6 @@ void c_error(char *msg)
 {
 	c_type("error: ", -1);
 	c_type(msg, -1);
-   c_flush(1);
 	xexit(1);
 }
 

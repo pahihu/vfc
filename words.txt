@@ -1,15 +1,16 @@
-( forth 100 words)
+( forth 101 words)
 context rp! rp@ sp! sp@ up user /block load save
 update block zcount (callc) (dlsym) (dlopen) -trailing append place count
 type 2/ 2* 1- 1+ cell+ cells cell does> cold
 abort fill move include word ?ms spaces space +! pad
 here forth macro mark /mod constant 0= c! c@ r@
 r> execute ' bye ( empty i , allot create
-variable : decimal hex cr key emit .r . over
-swap dup drop not invert xor or and > =
-< max min negate abs */ mod / * -
-+ ! @ exit >r <c"> <next> branch 0branch <lit>
+variable ] : decimal hex cr key emit .r .
+over swap dup drop not invert xor or and >
+= < max min negate abs */ mod / *
+- + ! @ exit >r <c"> <next> branch 0branch
+<lit>
 
 ( macro 13 words)
-] c" until repeat while begin ; ( next for
+c" until repeat while begin ; [ ( next for
 then else if
