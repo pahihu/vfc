@@ -13,7 +13,7 @@
  * History
  * =======
  * 231209AP added UPDATE, block cache (-c option sets the size)
- *          fixed ] added [, flush output on exit
+ *          fixed ] added [, flush output and SAVE on exit
  * 230925AP added \, it searches only the MACRO dictionary
  *          changed ', it searches the current dictionary
  *          renamed CURRENT to CONTEXT
@@ -255,6 +255,7 @@ void xexit(int code)
 {
    c_flush(1);
    if (origin) {
+      fo_save();
       free(origin);
       close(fdBLK);
    }
@@ -1187,8 +1188,9 @@ UCell hash(UCell K)
    return (ha * K) % nbuf;
 }
 
-#define BLOCK(x)     ((~CELL_MSB) & (x))
-#define UPDATED(x)   (  CELL_MSB  & (x))
+#define BLK_UPDATED  CELL_MSB
+#define BLOCK(x)     ((~BLK_UPDATED) & (x))
+#define UPDATED(x)   (  BLK_UPDATED  & (x))
 #define BLKADDR(x)   (CHAR(origin) + 1024*(x))
 
 char* c_block(Cell blk)
@@ -1227,9 +1229,8 @@ void fo_block(void)
 
 void fo_update(void)
 {
-   if (origin) {
-      blkupd[curBLK] |= CELL_MSB;
-   }
+   if (origin)
+      blkupd[curBLK] |= BLK_UPDATED;
 }
 
 void fo_save(void)
@@ -1244,7 +1245,7 @@ void fo_save(void)
          Cell oblk = BLOCK(blkupd[i]);
          lseek(fdBLK, 1024LL * oblk, SEEK_SET);
          write(fdBLK, BLKADDR(i), 1024);
-         blkupd[i] &= ~CELL_MSB;
+         blkupd[i] &= ~BLK_UPDATED;
       }
    }
 }
