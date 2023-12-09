@@ -4,11 +4,11 @@ variable scr
 : .head   cr ." scr#" scr @ . ;
 : .line ( a i-a')   15 swap -  cr 2 .r space  dup 64 -type 64 + ;
 : l .head ba 15 for i .line next drop cr ;
-: line ( n-a)   64 *  scr @ block  + ;
+: line ( n-a)   64 *  ba  + ;
 : list ( n)   scr ! l ;
-: wipe   ba 1024 bl fill ;
-: e ( n)   line 64 bl fill ;
-: r ( n 'text')   dup e line >R  13 word count  R> swap move ;
+: zot ( a #)   bl fill update ;
+: wipe   ba 1024 zot ;  : e ( n)   line 64 zot ;
+: r ( n 'text')   dup e line >R  13 word count  R> swap move  update ;
 : go ( o)   scr +! l ;  : p   -1 go ;  : n    1 go ;
 : insdel ( n-a b #)   15 over - 64 * >R  line dup 64 +  R> ;
 : d ( n)   insdel >R swap R> move  15 e ;

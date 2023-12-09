@@ -12,6 +12,7 @@
  *
  * History
  * =======
+ * 231209AP added UPDATE, block cache (-c option sets the size)
  * 230925AP added \, it searches only the MACRO dictionary
  *          changed ', it searches the current dictionary
  *          renamed CURRENT to CONTEXT
@@ -61,8 +62,10 @@ typedef void (*prime_t)(void);
 typedef long Cell;
 typedef unsigned long UCell;
 #ifdef __LP64__
+#define ha  11400714819323198485ULL
 typedef unsigned __int128 DCell;
 #else
+#define ha  2654435769UL
 typedef unsigned long long DCell;
 #endif
 typedef unsigned char Byte;
@@ -70,7 +73,11 @@ typedef unsigned char Byte;
 #define BYTE(x)      ((Byte*)(x))
 #define CHAR(x)      ((char*)(x))
 #define CELL(x)      ((Cell)(x))
+#define UCELL(x)     ((UCell)(x))
 #define PCELL(x)     ((Cell*)(x))
+
+#define CELL_MSB     (UCELL(-1) ^ (UCELL(-1) >> 1))
+#define ABS(x)       ((x) < 0 ? -(x) : (x))
 
 #define DSTACK_SIZE	(1500)
 #define RSTACK_SIZE	( 750)
@@ -95,7 +102,6 @@ typedef struct Dict {
 } DICT;
 
 Cell memSize;
-const char *blkFile;
 Cell *S0, *R0;
 /* User variables: LINK STATUS TOS TOS0 BASE OFFSET */
 
@@ -118,9 +124,13 @@ void *mark[3];       /* mark/empty */
 #define MAX_SOBJ  10
 void *sobj[MAX_SOBJ];/* shared objects */
 Cell nsobj = 0;
-void *origin = 0;
-size_t norigin;
-Cell nblk;
+const char *blkFile;    /* name of BLOCK file */
+Cell nblk;              /* no. of blocks in the BLOCK file */
+Cell curBLK = 0;        /* current block buffer*/
+int fdBLK = -1;         /* fd of BLOCK file */
+Cell *blkupd;           /* contains block numbers, if < 0, modified */
+void *origin = 0;       /* base of BLOCK cache */
+int nbuf = 128;         /* no. of buffers in the BLOCK cache */
 int dbg=0;
 
 Cell xt_dolit,xt_0branch, xt_branch;
@@ -241,8 +251,10 @@ int FPutS(const char *s, FILE *stream)
 
 void xexit(int code)
 {
-   if (origin)
+   if (origin) {
       free(origin);
+      close(fdBLK);
+   }
    exit(code);
 }
 
@@ -1162,34 +1174,77 @@ void c_init_io(void)
    io_init(&currOUT, stdout, conbufOUT, 0);
 }
 
+#define hW     ((UCELL(1) << (sizeof(Cell)*8-1)) - 1)
+#define hM     nbuf
+
+UCell hash(UCell K)
+{
+   UCell WperM = hW / hM;
+
+   K ^= K / WperM;
+   return (ha * K) % nbuf;
+}
+
+#define BLOCK(x)     ((~CELL_MSB) & (x))
+#define UPDATED(x)   (  CELL_MSB  & (x))
+#define BLKADDR(x)   (CHAR(origin) + 1024*(x))
+
 char* c_block(Cell blk)
 {
-   return origin? CHAR(origin) + 1024 * ((blk + OFFSET) % nblk) : 0;
+   UCell h;
+   char *adr;
+
+   if (!origin)
+      return 0;
+   blk = (blk + OFFSET) % nblk;
+   h = hash(blk);
+   adr = BLKADDR(h);
+   curBLK = h;
+   if (BLOCK(blkupd[h]) == blk)
+      return adr;
+   if (UPDATED(blkupd[h])) {
+      Cell oblk = BLOCK(blkupd[h]);
+      lseek(fdBLK, 1024 * oblk, SEEK_SET);
+      write(fdBLK, adr, 1024);
+   }
+   lseek(fdBLK, 1024 * blk, SEEK_SET);
+   read(fdBLK, adr, 1024);
+   blkupd[h] = blk;
+   return adr;
 }
 
 void fo_nblock(void)
 {
    fo_dup(); T = CELL(nblk);
 }
+
 void fo_block(void)
 {
    T = CELL(c_block(T));
 }
 
+void fo_update(void)
+{
+   if (origin) {
+      blkupd[curBLK] |= CELL_MSB;
+   }
+}
+
 void fo_save(void)
 {
-   int fd, e;
+   int i;
 
-   if ((fd = open(blkFile, O_WRONLY)) < 0) {
-     e = errno; goto ErrOut;
+   if (!origin)
+      return;
+
+   for (i = 0; i < nbuf; i++) {
+      if (UPDATED(blkupd[i])) {
+         Cell oblk = BLOCK(blkupd[i]);
+         lseek(fdBLK, 1024LL * oblk, SEEK_SET);
+         write(fdBLK, BLKADDR(i), 1024);
+         blkupd[i] &= ~CELL_MSB;
+      }
    }
-   if (write(fd, origin, norigin) < 0) {
-     e = errno; close(fd); goto ErrOut;
-   }
-   close(fd);
-   return;
-ErrOut:
-   c_doabort(strerror(e),-7);
 }
 
 typedef struct _dict_entry {
@@ -1315,6 +1370,7 @@ void c_dict(void)
       {"zcount",  fo_zcount},
 
       {"block",   fo_block},       /* memory block storage */
+      {"update",  fo_update},
       {"save",    fo_save},
       {"load",    fo_load},
       {"/block",  fo_nblock},
@@ -1384,11 +1440,9 @@ void _abort(void)
 
 void fo_cold(void)
 {
-   int fd;
-
    if (origin) {
-      free(origin);
-      origin = 0;
+      free(origin); origin = 0;
+      close(fdBLK); fdBLK = -1;
    }
    if (M) free(M);
 	M = PCELL(malloc(memSize*CELL_SIZE));
@@ -1416,20 +1470,20 @@ void fo_cold(void)
 
    c_init_io();
 
-   fd = open(blkFile, O_RDWR);
-   if (fd >= 0) {
-      off_t offs = lseek(fd, 0, SEEK_END);
+   fdBLK = open(blkFile, O_RDWR);
+   if (fdBLK >= 0) {
+      off_t offs = lseek(fdBLK, 0, SEEK_END);
       if (-1 != offs) {
-         if ((origin = malloc(norigin = offs))) {
-            nblk = norigin / 1024;
-            lseek(fd, 0, SEEK_SET);
-            read(fd, origin, norigin);
+         nblk = offs / 1024;
+         if ((origin = malloc(1024 * nbuf + sizeof(Cell) * nbuf))) {
+            blkupd = (Cell*)(origin + 1024 * nbuf);
+            MemSet(BYTE(blkupd), 0, sizeof(Cell) * nbuf);
+            lseek(fdBLK, 0, SEEK_SET);
             c_type("block file ",-1);
             c_type(blkFile,-1);
             fo_cr(); c_flush(1);
          }
       }
-      close(fd);
    }
 
 	fo_abort();
@@ -1438,7 +1492,7 @@ void fo_cold(void)
 
 void usage()
 {
-   FPutS("usage: vfc [-b file.blk][-d lvl][-m mem] [include1...]\n", stderr);
+   FPutS("usage: vfc [-b file.blk][-c #buf][-d lvl][-m mem] [include1...]\n", stderr);
    exit(1);
 }
 
@@ -1452,6 +1506,7 @@ int main(int argc, char *argv[])
 	}
    memSize = 256*1024;
    blkFile = "fo.blk";
+   nbuf    = 128;
    UP = dummyUP; BASE = 10;
    for (i = 1; i < argc; i++) {
       str = argv[i];
@@ -1460,6 +1515,8 @@ int main(int argc, char *argv[])
          case 'b':
             i++; blkFile = argv[i];
             break;
+         case 'c':
+            i++; nbuf = c_tonumber(BYTE(argv[i]));
          case 'd':
             i++; dbg = c_tonumber(BYTE(argv[i]));
             break;
