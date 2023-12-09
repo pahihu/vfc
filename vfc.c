@@ -13,6 +13,7 @@
  * History
  * =======
  * 231209AP added UPDATE, block cache (-c option sets the size)
+ *          fixed ] added [
  * 230925AP added \, it searches only the MACRO dictionary
  *          changed ', it searches the current dictionary
  *          renamed CURRENT to CONTEXT
@@ -1302,6 +1303,7 @@ void c_dict(void)
       {"decimal", fo_decimal},
 
 		{":",		   fo_colon},     /* defining */
+      {"]",       fo_rbracket},
 		{"variable",fo_variable},
 		{"create",  fo_create},
 		{"allot",   fo_allot},
@@ -1393,6 +1395,7 @@ void c_dict(void)
 		{"for",     fo_for},
 		{"next",    fo_next},
       {"(",       fo_paren},
+      {"[",       fo_lbracket},
 		{";",		   fo_semi},         /* defining */
 
 #ifndef MOORE_INTRO
@@ -1402,7 +1405,6 @@ void c_dict(void)
 		{"until",	fo_until},
 
       {"c\"",     fo_cstr},
-      {"]",       fo_rbracket},
       {"\\",      fo_bkslash},
 #endif
 		{NULL,		0},
