@@ -33,3 +33,4 @@
    cr ." Done " ;
 
 run
+bye

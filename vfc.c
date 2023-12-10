@@ -76,9 +76,7 @@ typedef unsigned char Byte;
 #define CELL(x)      ((Cell)(x))
 #define UCELL(x)     ((UCell)(x))
 #define PCELL(x)     ((Cell*)(x))
-
-#define CELL_MSB     (UCELL(-1) ^ (UCELL(-1) >> 1))
-#define ABS(x)       ((x) < 0 ? -(x) : (x))
+#define CELL_MSB     (UCELL(1) << (8*sizeof(Cell)-1))
 
 #define DSTACK_SIZE	(1500)
 #define RSTACK_SIZE	( 750)
@@ -131,7 +129,7 @@ Cell curBLK = 0;        /* current block buffer*/
 int fdBLK = -1;         /* fd of BLOCK file */
 Cell *blkupd;           /* contains block numbers, if < 0, modified */
 void *origin = 0;       /* base of BLOCK cache */
-int nbuf = 128;         /* no. of buffers in the BLOCK cache */
+Cell nbuf = CELL(128);  /* no. of buffers in the BLOCK cache */
 int dbg=0;
 
 Cell xt_dolit,xt_0branch, xt_branch;
@@ -881,7 +879,7 @@ void fo_empty(void)
     dFORTH = mark[1];
     dMACRO = mark[2];
 }
-void fo_bye(void)   { xexit(T); }
+void fo_bye(void)   { T = 0; xexit(T); }
 void fo_muldiv(void)
 {
    DCell d = S[1];
@@ -1189,25 +1187,28 @@ UCell hash(UCell K)
 }
 
 #define BLK_UPDATED  CELL_MSB
-#define BLOCK(x)     ((~BLK_UPDATED) & (x))
-#define UPDATED(x)   (  BLK_UPDATED  & (x))
-#define BLKADDR(x)   (CHAR(origin) + 1024*(x))
+#define C_UNASSIGNED (CELL(~CELL_MSB))
+#define C_BLOCK(x)   ((~BLK_UPDATED) & (x))
+#define C_UPDATED(x) (  BLK_UPDATED  & (x))
+#define BUFADDR(x)   (CHAR(origin) + 1024*(x))
 
 char* c_block(Cell blk)
 {
    UCell h;
    char *adr;
+   Cell oblk;
 
    if (!origin)
       return 0;
    blk = (blk + OFFSET) % nblk;
    h = hash(blk);
-   adr = BLKADDR(h);
+   adr = BUFADDR(h);
    curBLK = h;
-   if (BLOCK(blkupd[h]) == blk)
+   oblk = C_BLOCK(blkupd[h]);
+   if (C_UNASSIGNED != oblk && oblk == blk)
       return adr;
-   if (UPDATED(blkupd[h])) {
-      Cell oblk = BLOCK(blkupd[h]);
+   if (C_UPDATED(blkupd[h])) {
+      Cell oblk = C_BLOCK(blkupd[h]);
       lseek(fdBLK, 1024 * oblk, SEEK_SET);
       write(fdBLK, adr, 1024);
    }
@@ -1235,16 +1236,16 @@ void fo_update(void)
 
 void fo_save(void)
 {
-   int i;
+   Cell i;
 
    if (!origin)
       return;
 
    for (i = 0; i < nbuf; i++) {
-      if (UPDATED(blkupd[i])) {
-         Cell oblk = BLOCK(blkupd[i]);
+      if (C_UPDATED(blkupd[i])) {
+         Cell oblk = C_BLOCK(blkupd[i]);
          lseek(fdBLK, 1024LL * oblk, SEEK_SET);
-         write(fdBLK, BLKADDR(i), 1024);
+         write(fdBLK, BUFADDR(i), 1024);
          blkupd[i] &= ~BLK_UPDATED;
       }
    }
@@ -1480,8 +1481,10 @@ void fo_cold(void)
       if (-1 != offs) {
          nblk = offs / 1024;
          if ((origin = malloc(1024 * nbuf + sizeof(Cell) * nbuf))) {
+            Cell i;
             blkupd = (Cell*)(origin + 1024 * nbuf);
-            MemSet(BYTE(blkupd), 0, sizeof(Cell) * nbuf);
+            for (i = 0; i < nbuf; i++)
+               blkupd[i] = C_UNASSIGNED;
             lseek(fdBLK, 0, SEEK_SET);
             c_type("block file ",-1);
             c_type(blkFile,-1);
@@ -1510,7 +1513,7 @@ int main(int argc, char *argv[])
 	}
    memSize = 256*1024;
    blkFile = "fo.blk";
-   nbuf    = 128;
+   nbuf    = CELL(128);
    UP = dummyUP; BASE = 10;
    for (i = 1; i < argc; i++) {
       str = argv[i];
@@ -1521,6 +1524,7 @@ int main(int argc, char *argv[])
             break;
          case 'c':
             i++; nbuf = c_tonumber(BYTE(argv[i]));
+            break;
          case 'd':
             i++; dbg = c_tonumber(BYTE(argv[i]));
             break;
