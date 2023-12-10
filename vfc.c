@@ -879,7 +879,7 @@ void fo_empty(void)
     dFORTH = mark[1];
     dMACRO = mark[2];
 }
-void fo_bye(void)   { T = 0; xexit(T); }
+void fo_bye(void)   { xexit(0); }
 void fo_muldiv(void)
 {
    DCell d = S[1];
