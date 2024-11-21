@@ -59,6 +59,14 @@
 #include <errno.h>
 #include <string.h>
 
+#undef  MOORE_INTRO
+#if 1
+#define STRING_EXT   1
+#define FFI_EXT      1
+#define BLOCK_EXT    1
+#define TASKING_EXT  1
+#endif
+
 typedef void (*prime_t)(void);
 typedef long Cell;
 typedef unsigned long UCell;
@@ -113,13 +121,14 @@ Cell dummyUP[6];
 #define OFFSET UP[5]
 
 void (*staFn)(Byte*);
-DICT **CONTEXT;	   /* current vocabulary ptr */
-DICT *dFORTH,*dMACRO;/* FORTH dict, MACRO dict */
+Cell **CONTEXT;	   /* current vocabulary ptr */
+Cell *dFORTH,*dMACRO;/* FORTH dict, MACRO dict */
+/* dFORTH[0] = n, dFORTH[1] = nfa, dFORTH[-1] = cfa */
 Cell *H;			      /* dictionary ptr */
 #define cH           (BYTE(H))
 #define PAD          (2*CELL_SIZE*8 + cH)
 jmp_buf *errENV = 0;
-void *mark[3];       /* mark/empty */
+Cell mark[3];        /* mark/empty */
 #define MAX_SOBJ  10
 void *sobj[MAX_SOBJ];/* shared objects */
 Cell nsobj = 0;
@@ -636,30 +645,33 @@ void fo_fill(void)
  * CFA	cell
  * PFA
 */
-Cell* c_find(DICT *dict,Byte *s)
+Cell* c_find(Cell *dict,Byte *s)
 {
-	DICT *p;
-   Cell *xt = PCELL(-1);
+   int i;
+   Cell *xt;
 
    DBG(10,fprintf(stderr, "c_find: [%s]\n", s));
 
-	xt = 0; p = dict;
-	while (p && STRcmp(s,p->nfa))
-		p = p->lfa;
-	if (p)
-		xt = PCELL(&(p->cfa));
+	xt = 0; i = dict[0];
+   while (i) {
+      if (0 == STRcmp(s, BYTE(dict[i]))) {
+         xt = PCELL(dict[-i]);
+         break;
+      }
+      i--;
+   }
    DBG(10,fprintf(stderr, " xt=%p\n",xt));
 	return xt;
 }
-DICT* c_header(const Byte *w)
+Cell* c_header(const Byte *w)
 {
-	DICT *d = (DICT*)H;
+   Cell *d = *CONTEXT;
+   Cell n = d[0];
 
-   d->nfa = w; d->lfa = *CONTEXT; *CONTEXT = d;
-   H += 3;
-   return d;
+   n++; d[n] = CELL(w); d[0] = n;
+   return &d[-n];
 }
-DICT* fo_header(void)
+Cell* fo_header(void)
 {
    Byte *w;
 
@@ -674,33 +686,23 @@ DICT* fo_header(void)
 
 void fo_lbracket(void) { staFn = c_interpreter; }
 void fo_rbracket(void) { staFn = c_compiler; }
-void fo_colon(void) { DICT *d = fo_header(); d->cfa = fo_docol; fo_rbracket(); }
-void fo_semi(void)  { c_comma(xt_exit); fo_lbracket(); }
-
-void fo_constant(void)
-{
-	DICT *d = fo_header();
-   d->cfa = fo_docon;
-   d->pfa = T; H++;
-	fo_drop();
-}
-void fo_user(void)
-{
-	DICT *d = fo_header();
-   d->cfa = fo_douser;
-   d->pfa = T; H++;
-	fo_drop();
-}
-void fo_create(void) { DICT *d = fo_header(); d->cfa = fo_docre; d->pfa = 0; H++; }
+void c_mkdo(prime_t fn) { Cell *d = fo_header(); *d = CELL(H); c_comma(CELL(fn)); }
+void fo_colon(void)    { c_mkdo(fo_docol); fo_rbracket(); }
+void fo_semi(void)     { c_comma(xt_exit); fo_lbracket(); }
+void fo_constant(void) { c_mkdo(fo_docon); c_comma(T); fo_drop(); }
+void fo_user(void)     { c_mkdo(fo_douser); c_comma(T); fo_drop(); }
+void fo_create(void)   { c_mkdo(fo_docre); c_comma(0); }
 void fo_does(void)
 {
-   DICT *last = *CONTEXT;
+   Cell *d = *CONTEXT;
+   Cell n = d[0];
+   Cell *last = PCELL(d[-n]);
 
-   last->cfa = fo_dodoes;
-   last->pfa = CELL(P);
+   last[0] = CELL(fo_dodoes);
+   last[1] = CELL(P);
 	fo_exit();
 }
-void fo_variable(void) { DICT *d = fo_header(); d->cfa = fo_dovar; d->pfa = 0; H++; }
+void fo_variable(void) { c_mkdo(fo_dovar); c_comma(0); }
 
 /* inner interpreter */
 void fo_docol(void) 	{ *--R = I; I = CELL(P); P = W; }
@@ -872,15 +874,15 @@ void fo_macro(void) { CONTEXT = &dMACRO; }
 void fo_forth(void) { CONTEXT = &dFORTH; }
 void fo_mark(void)
 {
-    mark[0] = H;
-    mark[1] = dFORTH;
-    mark[2] = dMACRO;
+    mark[0] = CELL(H);
+    mark[1] = dFORTH[0];
+    mark[2] = dMACRO[0];
 }
 void fo_empty(void)
 {
-    H = mark[0];
-    dFORTH = mark[1];
-    dMACRO = mark[2];
+    H = PCELL(mark[0]);
+    dFORTH[0] = mark[1];
+    dMACRO[0] = mark[2];
 }
 void fo_bye(void)   { xexit(0); }
 void fo_muldiv(void)
@@ -934,7 +936,7 @@ void c_compiler(Byte *w)
       fo_literal();
 	}
 }
-void c_tick(DICT *d)
+void c_tick(Cell *d)
 {
    Byte *w;
    Cell *xt;
@@ -1261,14 +1263,13 @@ typedef struct _dict_entry {
 
 void c_dict(void)
 {
-	int i;
-   DICT *d;
+	int i, j;
+   Cell *d;
 	dict_entry_t words[] = {
 		{"<lit>",	fo_dolit},     /* runtime */
 		{"0branch", fo_0branch},
 		{"branch",  fo_branch},
 		{"<next>",  fo_donext},
-      {"<c\">",   fo_docstr},
 		{">r",      fo_tor},
 		{"exit",    fo_exit},
 
@@ -1292,7 +1293,6 @@ void c_dict(void)
 		{"and",     fo_and},
 		{"or",      fo_or},
 		{"xor",     fo_xor},
-      {"invert",  fo_invert},
       {"not",     fo_zequal},
 
 		{"drop",    fo_drop},      /* stack */
@@ -1309,20 +1309,21 @@ void c_dict(void)
       {"decimal", fo_decimal},
 
 		{":",		   fo_colon},     /* defining */
-      {"]",       fo_rbracket},
 		{"variable",fo_variable},
 		{"create",  fo_create},
 		{"allot",   fo_allot},
 		{",",       fo_comma},
-
-      {"i",       fo_rfetch},    /* control */
 		{"empty",   fo_empty},
 
+      {"i",       fo_rfetch},    /* control */
       {"(",       fo_paren},
 
+#ifndef MOORE_INTRO
+      {"<c\">",   fo_docstr},
+      {"invert",  fo_invert},
+      {"]",       fo_rbracket},
 		{"bye",     fo_bye},
 
-#ifndef MOORE_INTRO
 		{"'",	      fo_tick},
 		{"execute", fo_execute},
 
@@ -1365,24 +1366,32 @@ void c_dict(void)
       {"1-",      fo_1sub},
       {"2*",      fo_2star},
       {"2/",      fo_2slash},
+#endif
 
+#ifdef STRING_EXT
       {"type",    fo_type},         /* strings */
       {"count",   fo_count},
       {"place",   fo_place},
       {"append",  fo_append},
       {"-trailing", fo_subtrailing},
+#endif
 
+#ifdef FFI_EXT
       {"(dlopen)",fo_dlopen},       /* foreign functions */
       {"(dlsym)", fo_dlsym},
       {"(callc)", fo_callc},
       {"zcount",  fo_zcount},
+#endif
 
+#ifdef BLOCK_EXT
       {"block",   fo_block},       /* memory block storage */
       {"update",  fo_update},
       {"save",    fo_save},
       {"load",    fo_load},
       {"/block",  fo_nblock},
+#endif
 
+#ifdef TASKING_EXT
       {"user",    fo_user},        /* tasking */
       {"up",      fo_up},
       {"sp@",     fo_spat},
@@ -1390,8 +1399,8 @@ void c_dict(void)
       {"rp@",     fo_rpat},
       {"rp!",     fo_rpstore},
       {"context", fo_context},     /* context dictionary */
-/* --- END --- */
 #endif
+/* --- END --- */
 		{NULL,		0},
 	};
 	dict_entry_t macros[] = {
@@ -1401,10 +1410,10 @@ void c_dict(void)
 		{"for",     fo_for},
 		{"next",    fo_next},
       {"(",       fo_paren},
-      {"[",       fo_lbracket},
 		{";",		   fo_semi},         /* defining */
 
 #ifndef MOORE_INTRO
+      {"[",       fo_lbracket},
 		{"begin",	fo_begin},
 		{"while",	fo_while},
 		{"repeat",	fo_repeat},
@@ -1416,16 +1425,21 @@ void c_dict(void)
 		{NULL,		0},
 	};
 
-	CONTEXT = &dMACRO;
+   d = dMACRO;
 	for (i = 0; macros[i].nm; i++) {
-		d = c_header(BYTE(macros[i].nm));
-      d->cfa = macros[i].fn;
+      j = i + 1;
+      d[ j] = CELL(macros[i].nm);
+      d[-j] = CELL(H); *H++ = CELL(macros[i].fn);
 	}
-	CONTEXT = &dFORTH;
+   d[0] = j;
+
+   d = dFORTH;
 	for (i = 0; words[i].nm; i++) {
-		d = c_header(BYTE(words[i].nm));
-      d->cfa = words[i].fn;
+      j = i + 1;
+      d[ j] = CELL(words[i].nm);
+      d[-j] = CELL(H); *H++ = CELL(words[i].fn);
 	}
+   d[0] = j;
 }
 void fo_abort(void) { c_abort(-1); }
 void _abort(void)
@@ -1459,8 +1473,8 @@ void fo_cold(void)
 	R0 = S0 - RSTACK_SIZE;
 	H  = M + 0x100;
    UP = M;
-	dFORTH = 0;
-	dMACRO = 0;
+   dFORTH = &H[511]; dFORTH[0] = 0; H += 1024;
+   dMACRO = &H[127]; dMACRO[0] = 0; H +=  256;
 
    BASE   = 10;
    OFFSET = 0;
@@ -1478,6 +1492,7 @@ void fo_cold(void)
 
    c_init_io();
 
+#ifdef BLOCK_EXT
    fdBLK = open(blkFile, O_RDWR);
    if (fdBLK >= 0) {
       off_t offs = lseek(fdBLK, 0, SEEK_END);
@@ -1495,6 +1510,7 @@ void fo_cold(void)
          }
       }
    }
+#endif
 
 	fo_abort();
    fo_mark();
@@ -1502,7 +1518,7 @@ void fo_cold(void)
 
 void usage()
 {
-   FPutS("usage: vfc [-b file.blk][-c #buf][-d lvl][-m mem] [include1...]\n", stderr);
+   FPutS("usage: fo [-b file.blk][-c #buf][-d lvl][-m mem] [include1...]\n", stderr);
    exit(1);
 }
 

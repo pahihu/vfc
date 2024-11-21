@@ -1,0 +1,60 @@
+CC = clang -flto #-arch i386
+# CC = clang-mp-15 -flto 
+# CC = gcc-mp-12 -flto
+PROF_GEN = -fprofile-generate -mllvm -vp-counters-per-site=10
+PROF_USE = -fprofile-use=vfc.profdata
+# PROF_GEN = -fprofile-generate
+# PROF_USE = -fprofile-use
+OPT = -Os -fomit-frame-pointer -ffunction-sections -fdata-sections
+# OPT = -O1 -fomit-frame-pointer -ffunction-sections -fdata-sections
+# OPT = -O2 -fomit-frame-pointer -ffunction-sections -fdata-sections
+# OPT = -O3 -ffunction-sections -fdata-sections
+LIBS = -Wl,-dead_strip -lm
+STRIP = strip
+#CC = cc -g
+#OPT =
+#LIBS = -lm
+#STRIP = :
+XCFLAGS = #-DNDEBUG=1 -DMOORE_INTRO=1
+CFLAGS = $(OPT) $(XCFLAGS) -Wall -Wextra
+SHFLAGS = -fPIC
+
+ifeq ($(shell uname -s), Linux)
+  LIBS += -ldl
+endif
+
+all: vfc libtest.so
+
+vfc: vfc.c
+	$(CC) $(CFLAGS) -o $@ $< $(LIBS)
+	$(STRIP) -S -x $@
+	size $@
+	ls -l $@
+
+fo: moore.c
+	$(CC) $(CFLAGS) -o $@ $< $(LIBS)
+	$(STRIP) -S -x $@
+	size $@
+	ls -l $@
+
+bench: vfc
+	./vfc run.f bench.f
+
+prof.gen: vfc.c
+	$(RM) vfc.prof vfc.profdata *.gcda
+	$(CC) $(PROF_GEN) $(CFLAGS) -o vfc $< $(LIBS)
+	$(STRIP) -S -x vfc
+	./vfc run.f bench.f
+
+prof.use: vfc.c
+	$(RM) vfc
+	$(CC) $(PROF_USE) $(CFLAGS) -o vfc $< $(LIBS)
+	$(STRIP) -S -x vfc
+	./vfc run.f bench.f
+
+libtest.so: test.c
+	$(CC) -shared $(SHFLAGS) -o $@ $<
+
+clean:
+	$(RM) vfc vfc.o fo moore.o libtest.so default*.profraw *.gcda
+	$(RM) -r *.dSYM
