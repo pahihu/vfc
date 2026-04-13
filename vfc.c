@@ -58,6 +58,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <string.h>
+#include <sys/time.h>
 
 typedef void (*prime_t)(void);
 typedef long Cell;
@@ -92,6 +93,8 @@ Cell *S,T,I,*R;		/* data stack ptr, top, rtop, return stack ptr */
 Cell *UP;            /* user area */
 
 #define N   *S
+
+#define DO(n,x)      {int i,_n=(n);for(i=0;i<_n;i++){x;}}
 
 typedef struct Dict {
    const Byte *nfa;
@@ -348,8 +351,7 @@ void c_type(const char *s, int n)
     
     if (-1 == n)
         n = StrLen(s);
-    for (i = 0; i < n; i++)
-        c_emit(*s++);
+    DO(n, c_emit(*s++));
 }
 
 void c_error(char *msg)
@@ -440,8 +442,7 @@ void fo_space(void){ c_emit(BL); }
 void fo_spaces(void)
 {
    Cell i;
-   for (i = 0; i < T; i++)
-      c_emit(BL);
+   DO(T, fo_space());
    fo_drop();
 }
 void fo_type(void)
@@ -785,8 +786,9 @@ Cell c_tonumber(Byte *s)
    return ret;
 }
 
-char* c_ntoa(Cell n, int base)
+char* c_ntoa(Cell n)
 {
+   int base = BASE;
 	static char digits[] = "0123456789abcdefghijklmnopqrstuvwxyz";
 	Byte *p = PAD - 1;
    int sign = 0;
@@ -806,32 +808,33 @@ char* c_ntoa(Cell n, int base)
 	return CHAR(p);
 }
 
-void c_typer(char *p, int n, int m)
+void c_typer(char *p, int n, int w)
 {
    int i;
     
 	if (-1 == n)
 	   n = StrLen(p);
-	for (i = 0; i < m - n; i++) {
-    	c_emit(' ');
-	}
+   DO(w - n, fo_space());
 	c_type(p, n);
 }
 
-void c_dotr(Cell n, int w, int base)
+void c_dotr(Cell n, int w)
 {
-    c_typer(c_ntoa(n, base), -1, w);
-    if (!w)
-        c_emit(' ');
+   int base = BASE;
+
+   c_typer(c_ntoa(n), -1, w);
+   if (!w)
+      fo_space();
 }
 
-void fo_dot(void)  { Cell n = T; fo_drop(); c_dotr(n, 0, BASE); }
+void c_dot(Cell n) { c_dotr(n, 0); }
+void fo_dot(void)  { Cell n = T; fo_drop(); c_dot(n); }
 void fo_dotr(void)
 {
    Cell w = T, n = N;
 
    T = S[1]; S += 2;
-   c_dotr(n, w, BASE);
+   c_dotr(n, w);
 }
 Cell* c_docstr(Cell *n)
 {
@@ -898,10 +901,18 @@ void fo_equal(void) { T = *S++ == T ? -1 : 0; }
 void fo_less(void)  { T = *S++ <  T ? -1 : 0; }
 void fo_greater(void)  { T = *S++ >  T ? -1 : 0; }
 
-void fo_qms(void)
+void fo_get_time(void)
 {
-    fo_dup();
-    T = CELL(1000 * ((double)clock() / CLOCKS_PER_SEC));
+   static struct timeval t0 = {0, 0};
+   struct timeval t1;
+   time_t msecs;
+
+   if (!t0.tv_sec) gettimeofday(&t0, NULL);
+   gettimeofday(&t1, NULL);
+
+   fo_dup(); T = t1.tv_usec - t0.tv_usec;
+   fo_dup(); T = t1.tv_sec - t0.tv_sec;
+   if (N < 0) { N += 1000000; T--; }
 }
 
 void c_interpreter(Byte *w)
@@ -989,10 +1000,7 @@ void fo_callc(void) /* : (CALLC) ( an .. a1 narg fn -- x ) */
    fn = (long (*)())T;
    fo_drop(); narg = T;
    DBG(2,fprintf(stderr,"--- callc: fn=%p narg=%d\n",fn,narg));
-   for (i = 0; i < narg; i++) {
-      fo_drop(); a[i] = T;
-      DBG(2,fprintf(stderr,"--- a[%d] = %ld\n",i,a[i]));
-   }
+   DO(narg, fo_drop(); a[i] = T; DBG(2,fprintf(stderr,"--- a[%d] = %ld\n",i,a[i])));
 
    ret = 0;
    switch(narg) {
@@ -1095,10 +1103,10 @@ void c_mainloop()
 	for (;;) {
       if (devIN && isatty(fileno(devIN))) {
          fo_cr();
-         c_dotr(S[2], 0, BASE);
-         c_dotr(S[1], 0, BASE);
-         c_dotr(S[0], 0, BASE);
-         c_dotr(   T, 0, BASE);
+         c_dot(S[2]);
+         c_dot(S[1]);
+         c_dot(S[0]);
+         c_dot(   T);
          c_type("> ", -1);
       }
       if (c_refill())
@@ -1244,14 +1252,13 @@ void fo_save(void)
    if (!origin)
       return;
 
-   for (i = 0; i < nbuf; i++) {
+   DO(nbuf,
       if (C_UPDATED(blkupd[i])) {
          Cell oblk = C_BLOCK(blkupd[i]);
          lseek(fdBLK, 1024LL * oblk, SEEK_SET);
          write(fdBLK, BUFADDR(i), 1024);
          blkupd[i] &= ~BLK_UPDATED;
-      }
-   }
+      });
 }
 
 typedef struct _dict_entry {
@@ -1347,7 +1354,7 @@ void c_dict(void)
       {"space",   fo_space},
       {"spaces",  fo_spaces},
 
-		{"?ms",     fo_qms},       /* extensions */
+		{"get-time", fo_get_time}, /* extensions */
 		{"word",    fo_word},
       {"include", fo_include},
       {"move",    fo_move},
@@ -1389,10 +1396,9 @@ void c_dict(void)
       {"sp!",     fo_spstore},
       {"rp@",     fo_rpat},
       {"rp!",     fo_rpstore},
-      {"context", fo_context},     /* context dictionary */
+      {"context", fo_context}       /* context dictionary */
 /* --- END --- */
 #endif
-		{NULL,		0},
 	};
 	dict_entry_t macros[] = {
 		{"if",		fo_if},           /* control */
@@ -1411,21 +1417,14 @@ void c_dict(void)
 		{"until",	fo_until},
 
       {"c\"",     fo_cstr},
-      {"\\",      fo_bkslash},
+      {"\\",      fo_bkslash}
 #endif
-		{NULL,		0},
 	};
 
 	CONTEXT = &dMACRO;
-	for (i = 0; macros[i].nm; i++) {
-		d = c_header(BYTE(macros[i].nm));
-      d->cfa = macros[i].fn;
-	}
+   DO(sizeof(macros) / sizeof(dict_entry_t), d = c_header(BYTE(macros[i].nm)); d->cfa = macros[i].fn);
 	CONTEXT = &dFORTH;
-	for (i = 0; words[i].nm; i++) {
-		d = c_header(BYTE(words[i].nm));
-      d->cfa = words[i].fn;
-	}
+   DO(sizeof(words) / sizeof(dict_entry_t), d = c_header(BYTE(words[i].nm)); d->cfa = words[i].fn);
 }
 void fo_abort(void) { c_abort(-1); }
 void _abort(void)
@@ -1486,8 +1485,7 @@ void fo_cold(void)
          if ((origin = malloc(1024 * nbuf + sizeof(Cell) * nbuf))) {
             Cell i;
             blkupd = (Cell*)(origin + 1024 * nbuf);
-            for (i = 0; i < nbuf; i++)
-               blkupd[i] = C_UNASSIGNED;
+            DO(nbuf, blkupd[i] = C_UNASSIGNED);
             lseek(fdBLK, 0, SEEK_SET);
             c_type("block file ",-1);
             c_type(blkFile,-1);

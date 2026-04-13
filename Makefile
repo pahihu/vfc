@@ -1,8 +1,8 @@
 CC = cc
-OPT = -Os -fomit-frame-pointer
+OPT = -Os -fomit-frame-pointer -ffunction-sections -fdata-sections
 CFLAGS = $(OPT) $(XCFLAGS) -Wall -Wextra
 SHFLAGS = -fPIC
-LIBS = -lm
+LIBS = -Wl,-dead_strip -lm
 STRIP = strip
 
 ifeq ($(shell uname -s), Linux)
