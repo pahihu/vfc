@@ -1,4 +1,4 @@
-: fib ( n-m)   dup 2 < if exit then 1- dup fib swap 1- fib + ;
+: fib ( n-m)   dup 2 < if drop 1 exit then 1- dup fib swap 1- fib + 1+ ;
 : inner ( n)   for next ;
 : outer ( n)   dup for  dup inner  next drop ;
 
@@ -8,8 +8,8 @@
    counter  20k 1- outer  timer ;
 
 : benchFib
-   cr ." Fibonacci(35) "
-   counter  35 fib drop  timer ;
+   cr ." Fibonacci(36) "
+   counter  36 fib drop  timer ;
 
 500000000 constant 500m
 : bench1

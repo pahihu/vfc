@@ -1,5 +1,6 @@
-CC = cc
-OPT = -Os -fomit-frame-pointer -ffunction-sections -fdata-sections
+CC = cc -flto
+# OPT = -Os -fomit-frame-pointer -ffunction-sections -fdata-sections
+OPT = -O3 -fomit-frame-pointer -ffunction-sections -fdata-sections
 CFLAGS = $(OPT) $(XCFLAGS) -Wall -Wextra
 SHFLAGS = -fPIC
 LIBS = -Wl,-dead_strip -lm

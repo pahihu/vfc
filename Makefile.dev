@@ -5,10 +5,10 @@ PROF_GEN = -fprofile-generate -mllvm -vp-counters-per-site=10
 PROF_USE = -fprofile-use=vfc.profdata
 # PROF_GEN = -fprofile-generate
 # PROF_USE = -fprofile-use
-OPT = -Os -fomit-frame-pointer -ffunction-sections -fdata-sections
+# OPT = -Os -fomit-frame-pointer -ffunction-sections -fdata-sections
 # OPT = -O1 -fomit-frame-pointer -ffunction-sections -fdata-sections
 # OPT = -O2 -fomit-frame-pointer -ffunction-sections -fdata-sections
-# OPT = -O3 -ffunction-sections -fdata-sections
+OPT = -O3 -ffunction-sections -fdata-sections
 LIBS = -Wl,-dead_strip -lm
 STRIP = strip
 #CC = cc -g
